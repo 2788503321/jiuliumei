@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1013">
+<link rel="icon" href="data:,">
+<title>韭留美模拟器</title>
+<meta name="description" content="一个关于杠杆、上头和高利贷的虚构金融模拟。100 万本金，每秒一跳，三个结局。">
+<meta property="og:title" content="韭留美模拟器">
+<meta property="og:description" content="100 万本金，每秒一跳。你能撑到上岸吗？">
+<meta property="og:type" content="website">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#0b0c0f;color:#e8eaee;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none}
+  #app{position:relative;height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 0%,#16181d,#0b0c0f 60%)}
+  /* 上头红边 */
+  #tiltEdge{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+    box-shadow:inset 0 0 90px 20px rgba(255,40,40,.55), inset 0 0 200px 60px rgba(255,0,0,.22)}
+  /* 顶部 */
+  #hud{padding:10px 12px 6px;font-size:12px;color:#9aa4b2}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px}
+  .cell{flex:1;min-width:0}
+  .k{font-size:10px;color:#6f7a8a;letter-spacing:.5px}
+  .v{font-size:15px;font-weight:700;color:#eef2f8;font-variant-numeric:tabular-nums}
+  .v.small{font-size:13px}
+  .neg{color:#ff5c5c}.pos{color:#2ee6a8}
+  #debtBar{height:4px;border-radius:3px;background:#1b1f26;overflow:hidden;margin-top:2px}
+  #debtFill{height:100%;width:0;background:#888;transition:width .2s,background .2s}
+  /* 图表 */
+  #chartWrap{position:relative;flex:1;min-height:120px;margin:4px 0 0}
+  #chart{display:block;width:100%;height:100%}
+  #priceTag{position:absolute;right:8px;top:6px;font-size:20px;font-weight:800;
+    font-variant-numeric:tabular-nums;color:#eaf6ff;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+  #news{position:absolute;left:8px;right:8px;bottom:6px;font-size:11px;color:#8b95a5;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9}
+  #face{display:none}
+  #storyPao{-webkit-mask-image:radial-gradient(62% 60% at 50% 46%, #000 60%, rgba(0,0,0,0) 100%);
+    mask-image:radial-gradient(62% 60% at 50% 46%, #000 60%, rgba(0,0,0,0) 100%)}
+  #pao{position:absolute;left:-2px;top:0;width:106px;height:134px;pointer-events:none;opacity:.95;
+    -webkit-mask-image:radial-gradient(58% 56% at 50% 46%, #000 62%, rgba(0,0,0,0) 100%);
+    mask-image:radial-gradient(58% 56% at 50% 46%, #000 62%, rgba(0,0,0,0) 100%)}
+  #crack{position:fixed;inset:0;z-index:70;pointer-events:none;opacity:0;transition:opacity .3s}
+  #bgmBtn{position:absolute;right:8px;top:36px;font-size:11px;padding:4px 9px;border-radius:20px;
+    background:rgba(20,26,34,.75);border:1px solid #2a3444;color:#9fb0c4;cursor:pointer}
+  #story{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;
+    justify-content:center;gap:6px;padding:26px 22px calc(30px + env(safe-area-inset-bottom));
+    background:radial-gradient(120% 90% at 50% 30%, #1b2230 0%, #0b0f16 60%, #06080c 100%)}
+  #story.show{display:flex}
+  #storyPao{width:200px;height:250px;flex:0 0 auto}
+  #storyBox{max-width:460px;width:100%;min-height:112px}
+  #storyWho{font-size:11px;letter-spacing:3px;color:#ff9ec4;margin-bottom:8px}
+  #storyText{font-size:15px;line-height:1.95;color:#e8eaee;min-height:60px}
+  #storyHint{margin-top:16px;font-size:11px;color:#6b7686;animation:blinkHint 1.4s infinite}
+  @keyframes blinkHint{0%,100%{opacity:.25}50%{opacity:.9}}
+  #storySkip{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top));font-size:11px;
+    padding:5px 10px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid #2a3444;
+    color:#8b95a5;cursor:pointer}
+  #crack.on{opacity:1}
+  @keyframes shakeX{0%{transform:translate(0,0)}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}
+    60%{transform:translate(-4px,-2px)}80%{transform:translate(3px,4px)}100%{transform:translate(0,0)}}
+  #app.shake{animation:shakeX .45s}
+  #coinLayer{position:fixed;inset:0;pointer-events:none;z-index:75;overflow:hidden}
+  .coin{position:absolute;top:-40px;font-size:22px;animation:coinFall linear forwards;will-change:transform}
+  @keyframes coinFall{0%{transform:translateY(0) rotate(0);opacity:0}
+    10%{opacity:1}100%{transform:translateY(108vh) rotate(540deg);opacity:.9}}
+  /* 按钮 */
+  #btns{padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:grid;gap:7px;
+    grid-template-columns:1fr 1fr}
+  button{font-family:inherit;border:0;border-radius:12px;padding:13px 8px;font-size:14px;font-weight:700;
+    color:#fff;background:#242a34;transition:transform .06s,filter .15s;line-height:1.15}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.4}
+  .b-lev{background:linear-gradient(180deg,#3a2a52,#2a1e3e);color:#e6d6ff;border:1px solid #4a3668}
+  .b-add{background:linear-gradient(180deg,#2d3f5c,#22304a);color:#cfe2ff;border:1px solid #39506f}
+  .b-close{background:linear-gradient(180deg,#1f6b52,#17513e);color:#c8ffe8;border:1px solid #2a8a6a}
+  .b-reduce{background:#20262f;color:#b9c3d2;border:1px solid #2c3542;font-size:13px}
+  .b-loan{background:linear-gradient(180deg,#6b3a1f,#4d2915);color:#ffd9b8;border:1px solid #8a4b26}
+  .sub{font-size:10px;font-weight:500;opacity:.75;display:block;margin-top:2px}
+  .b-buy{background:linear-gradient(180deg,#2a5f9e,#1e4675);color:#d8ecff;border:1px solid #3a7bc0}
+  .b-sell{background:linear-gradient(180deg,#9e5a2a,#75411e);color:#ffe6d0;border:1px solid #c07a3a}
+  .b-pause{background:#242a34;color:#cfd8e6;border:1px solid #333e4d}
+  .b-repay{background:linear-gradient(180deg,#2f7a55,#1f5639);color:#d6ffe8;border:1px solid #3f9a6c}
+  #btns button:disabled{opacity:.45}
+  /* 弹窗 */
+  .modal{position:absolute;inset:0;background:rgba(4,5,8,.82);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
+  .modal.on{display:flex}
+  .card{width:100%;max-width:400px;background:#141821;border:1px solid #242c3a;border-radius:16px;
+    padding:16px}
+  .card h3{font-size:16px;margin-bottom:10px;display:flex;justify-content:space-between}
+  .li{display:flex;justify-content:space-between;font-size:13px;color:#a8b3c2;padding:4px 0}
+  .li b{color:#e9eef7;font-variant-numeric:tabular-nums}
+  .li.big b{font-size:15px}
+  .warn{color:#ff8f6b}
+  .amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+  .amounts button{padding:12px 4px;font-size:14px;background:#1d2430;border:1px solid #2c3646;color:#cfe0f5}
+  .amounts button.sel{background:#2a3b57;border-color:#4a7ab5;color:#fff}
+  .modalBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .modalBtns .ok{background:linear-gradient(180deg,#7a4a22,#5a3416);border:1px solid #9a5a28;color:#ffddbb}
+  .modalBtns .no{background:#1d232c;border:1px solid #2b3441;color:#98a4b4}
+  /* 结束 */
+  #over{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;padding:24px;z-index:20;background:rgba(6,7,10,.92)}
+  #over.on{display:flex}
+  #overFace{font-size:64px;margin-bottom:8px}
+  #overTitle{font-size:26px;font-weight:800;margin-bottom:6px}
+  #overSub{font-size:14px;color:#9fb0c4;line-height:1.6;margin-bottom:14px;max-width:340px}
+  #overStats{font-size:12px;color:#7d8a9c;line-height:1.9;margin-bottom:18px;
+    background:#12161d;border:1px solid #1f2630;border-radius:12px;padding:10px 14px;text-align:left}
+  #gallery{display:flex;gap:10px;margin-bottom:16px}
+  .slot{width:78px;padding:8px 4px;border-radius:10px;background:#12161d;border:1px solid #202834;
+    font-size:10px;color:#5f6b7b;line-height:1.35}
+  .slot.got{border-color:#3c5a7a;color:#bcd6ee;background:#16202c}
+  .slot .ic{font-size:20px;display:block;margin-bottom:4px}
+  /* 开场 */
+  #menu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:26px;text-align:center;z-index:30;background:#0b0c0f}
+  #menu.off{display:none}
+  #menu h1{font-size:30px;font-weight:900;letter-spacing:2px;margin-bottom:6px;
+    background:linear-gradient(180deg,#fff,#8fa8c4);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #menu .tag{font-size:12px;color:#6d7a8b;letter-spacing:3px;margin-bottom:22px}
+  #menu .rule{font-size:13px;color:#a9b6c7;line-height:1.9;max-width:330px;text-align:left;
+    background:#12161d;border:1px solid #1f2630;border-radius:14px;padding:14px 16px;margin-bottom:20px}
+  #menu .rule b{color:#ffb48a}
+  #menu .note{font-size:10px;color:#545e6c;margin-top:14px;line-height:1.6}
+  #start{width:100%;max-width:330px;padding:15px;font-size:16px;
+    background:linear-gradient(180deg,#2a6b52,#1d5340);border:1px solid #358a68;color:#d6ffe9}
+</style>
+</head>
+<body>
+<canvas id="crack"></canvas>
+<div id="app">
+  <div id="tiltEdge"></div>
+
+  <div id="hud">
+    <div class="row">
+      <div class="cell"><div class="k">手上的钱</div><div class="v" id="hCash">¥100万</div></div>
+      <div class="cell"><div class="k">总共还剩</div><div class="v" id="hEquity">—</div></div>
+      <div class="cell" style="text-align:right"><div class="k">再跌就没了</div><div class="v small" id="hDist">—</div></div>
+    </div>
+    <div class="row" style="margin-bottom:3px">
+      <div class="cell"><div class="k">欠的钱</div><div class="v small" id="hDebt">¥0</div>
+        <div id="debtBar"><div id="debtFill"></div></div>
+      </div>
+      <div class="cell" style="text-align:right"><div class="k">上头</div><div class="v small" id="hTilt">0</div></div>
+    </div>
+  </div>
+
+  <div id="chartWrap">
+    <canvas id="chart"></canvas>
+    <canvas id="pao"></canvas>
+    <div id="face">😐</div>
+    <div id="priceTag">100.00</div>
+    <button id="bgmBtn">♪ 音乐 关</button>
+    <div id="news">开局中…</div>
+  </div>
+
+  <div id="btns">
+    <button class="b-buy" id="btnBuy">买入 · 全押<span class="sub">把钱全押上</span></button>
+    <button class="b-sell" id="btnSell">卖出 · 全部<span class="sub">落袋为安</span></button>
+    <button class="b-lev" id="btnLev">押更大 ×10<span class="sub">押得越多，越容易没</span></button>
+    <button class="b-add" id="btnAdd">补钱<span class="sub">把手上的钱垫进去</span></button>
+    <button class="b-repay" id="btnRepay">还钱<span class="sub">用手上的钱还欠款</span></button>
+    <button class="b-pause" id="btnPause">暂停<span class="sub">行情和债务一起停</span></button>
+    <button class="b-loan" id="btnLoan" style="grid-column:span 2">💰 高利贷<span class="sub">月息 18%–30%，每 5 秒算一次</span></button>
+  </div>
+
+  <div class="modal" id="loanModal">
+    <div class="card">
+      <h3><span>💰 高利贷</span><span style="font-size:11px;color:#8b95a5" id="lmRateTag">—</span></h3>
+      <div class="li"><span>这回借</span><b id="lmAmt">¥30万</b></div>
+      <div class="li"><span>每月利息</span><b id="lmRate">18%</b></div>
+      <div class="li"><span>一个月要多还</span><b id="lmInt">¥5.4万</b></div>
+      <div class="li"><span>已经借了</span><b id="lmPrin">¥0</b></div>
+      <div class="li"><span>利滚利到现在</span><b id="lmAcc">¥0</b></div>
+      <div class="li big"><span>现在一共欠</span><b id="lmTotal">¥0</b></div>
+      <div class="li"><span>离被催债还差</span><b id="lmLeft">¥300万</b></div>
+      <div class="amounts" id="lmAmounts">
+        <button data-a="300000">30万</button>
+        <button data-a="500000">50万</button>
+        <button data-a="1000000">100万</button>
+      </div>
+      <div id="lmConfirm" style="display:none;font-size:12px;color:#ffb08a;text-align:center;margin-bottom:8px">
+        借得越多利息越高，确定？
+      </div>
+      <div class="modalBtns">
+        <button class="no" id="lmCancel">算了</button>
+        <button class="ok" id="lmOk">借款</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="pausePanel">
+    <div class="card" style="text-align:center">
+      <h3 style="justify-content:center">已暂停</h3>
+      <div style="font-size:12px;color:#8b95a5;line-height:1.7;margin-bottom:14px">
+        行情停住了，利息和催债倒计时也停住了。<br>想清楚再继续。
+      </div>
+      <div class="modalBtns">
+        <button class="no" id="pResume">继续</button>
+        <button class="ok" id="pSettle">结算这一局</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="over">
+    <div id="overFace">😐</div>
+    <div id="overTitle">—</div>
+    <div id="overSub"></div>
+    <div id="overStats"></div>
+    <div id="gallery">
+      <div class="slot" id="s1"><span class="ic">🏝️</span>结局一<br>2000万上岸</div>
+      <div class="slot" id="s7"><span class="ic">💸</span>结局七<br>利息滚死</div>
+      <div class="slot" id="s8"><span class="ic">🫣</span>结局八<br>偷爸爸的300万</div>
+    </div>
+    <button id="keepPlay" style="display:none;width:100%;max-width:330px;padding:14px;font-size:15px;
+      background:linear-gradient(180deg,#2a5d8b,#1c4468);border:1px solid #3b7fb8;color:#d9ecff">继续玩（带着这笔钱）</button>
+    <button id="again" style="width:100%;max-width:330px;padding:14px;font-size:15px;
+      background:linear-gradient(180deg,#2a6b52,#1d5340);border:1px solid #358a68;color:#d6ffe9">再来一局</button>
+  </div>
+
+  <div id="story">
+    <button id="storySkip">跳过 ▸</button>
+    <canvas id="storyPao"></canvas>
+    <div id="storyBox">
+      <div id="storyWho">——</div>
+      <div id="storyText"></div>
+      <div id="storyHint">点一下继续 ▸</div>
+    </div>
+  </div>
+
+  <div id="menu">
+    <h1>韭留美模拟器</h1>
+    <div class="tag">F X · 杠 杆 · 人 性</div>
+    <div class="rule">
+      你有 <b>100 万</b>，行情<b>每秒跳一次</b>。<br>
+      <b>买入</b>是全押，<b>卖出</b>是全部落袋，可以反复买卖。<br>
+      钱不够可以借高利贷，每 5 秒算一次利息；欠到 <b>300 万</b> 会被催债。<br>
+      目标：赚到 <b>2000 万</b> 上岸。
+    </div>
+    <button id="start">开始交易</button>
+    <div class="note">虚构金融模拟，输赢都是假的，不构成任何投资建议。<br>所有按钮都按你自己手上按出来的。</div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ 常量 ============ */
+var MAINT = {10:0.05, 50:0.012, 100:0.004};   // 维持保证金率（占名义本金）
+var FEE = 0.0005;                              // 单边手续费
+var TICK_MS = 1000;                            // 价格步长：每秒跳一次
+var MONTH_MS = 5000;                           // 5 秒 = 1 个月
+var START_CASH = 1000000;
+var TARGET = 20000000;
+var MAX_DEBT = 3000000;                        // 本金上限
+var FORCED_LINE = 3000000;                     // 本金+利息 强制线
+var LEV_STEPS = [10,50,100];
+
+/* ============ 状态 ============ */
+var S = null;
+
+function newGame(){
+  S = {
+    phase:"play",            // play | over
+    cash: START_CASH,
+    debtP: 0, debtI: 0, borrowCount: 0,
+    pos: null,               // {entry, margin, nominal, lev, maint, openedAt}
+    lev: 10,
+    price: 100, anchor: 100, hist: [100],
+    tilt: 0,
+    t: 0,                    // 秒
+    stats: {trades:0, fees:0, interest:0, borrowed:0, holdMs:0},
+    eventUntil: 0, eventBias: 0, eventName: "",
+    forcedUntil: 0, forcedActive: false,
+    busted: false, forcedHit: false,
+    paused: false,
+    nextEventAt: 20 + Math.random()*14,
+    secondEventAt: 0,
+    lastMonth: 0,
+    stayPlay: false,
+    lastEnding: null,
+    overAt: 0
+  };
+}
+
+/* ============ 工具 ============ */
+function wan(n){
+  var a = Math.abs(n);
+  if(a >= 1e8) return (n/1e8).toFixed(2)+"亿";
+  if(a >= 1e4) return (n/1e4).toFixed(a>=1e6?0:1)+"万";
+  return n.toFixed(0);
+}
+function money(n){ return (n<0?"-":"")+"¥"+wan(Math.abs(n)); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+
+
+/* ============ 立绘（程序绘制的久留美） ============ */
+var pao = null, pctx = null, PW = 0, PH = 0;
+function paoEl(){
+  if(!pao){ pao = document.getElementById("pao"); if(pao) pctx = pao.getContext("2d"); }
+  return pao;
+}
+var blinkAt = 2 + Math.random()*2, blinkHold = 0;
+
+function resizePao(){
+  if(!paoEl()) return;
+  var r = pao.getBoundingClientRect();
+  if(!r.width) return;
+  PW = r.width; PH = r.height;
+  pao.width = Math.round(PW*DPR); pao.height = Math.round(PH*DPR);
+  pctx.setTransform(DPR,0,0,DPR,0,0);
+}
+
+function paoMood(){
+  if(!S) return "calm";
+  if(S.phase === "over") return S.busted ? "bust" : (S.lastEnding === "win" ? "win" : "broken");
+  if(S.tilt >= 85) return "broken";
+  if(S.tilt >= 60) return "manic";
+  if(S.tilt >= 30) return "tense";
+  return "calm";
+}
+
+// 通用：把“女孩”画进任意上下文（立绘与剧情共用）
+function drawGirl(c, w, h, mood, t, blink){
+  c.clearRect(0,0,w,h);
+  var R = Math.min(w*0.40, h*0.29);
+  var cx = w*0.5, cy = h*0.40;
+  var bob = Math.sin(t*1.5)*R*0.035;
+
+  // 柔光底
+  var glowR = Math.max(w,h)*1.05;
+  var bg = c.createRadialGradient(cx, cy, R*0.2, cx, cy, glowR);
+  bg.addColorStop(0, "rgba(255,138,176,.10)");
+  bg.addColorStop(0.35, "rgba(255,138,176,.04)");
+  bg.addColorStop(0.66, "rgba(255,138,176,0)");
+  c.fillStyle = bg; c.fillRect(0,0,w,h);
+
+  c.save(); c.translate(0, bob);
+
+  var SKIN = "#ffe4d6", SKIN2 = "#f2c6b4";
+  var HAIR = "#3a2a33", HAIR2 = "#4a3540";
+  var SHIRT = "#2b3450";
+
+  // 后发
+  c.fillStyle = HAIR;
+  c.beginPath(); c.ellipse(cx, cy+R*0.30, R*1.16, R*1.30, 0, 0, 7); c.fill();
+
+  // 脖子
+  c.fillStyle = SKIN2;
+  c.beginPath(); c.rect(cx-R*0.24, cy+R*0.78, R*0.48, R*0.46); c.fill();
+
+  // 身体（肩）
+  c.fillStyle = SHIRT;
+  c.beginPath();
+  c.moveTo(cx-R*1.55, h+6);
+  c.quadraticCurveTo(cx-R*1.05, cy+R*1.34, cx, cy+R*1.18);
+  c.quadraticCurveTo(cx+R*1.05, cy+R*1.34, cx+R*1.55, h+6);
+  c.closePath(); c.fill();
+
+  // 领口（V 领）
+  c.fillStyle = "#e9eef8";
+  c.beginPath();
+  c.moveTo(cx-R*0.50, cy+R*1.16);
+  c.lineTo(cx, cy+R*1.56);
+  c.lineTo(cx+R*0.50, cy+R*1.16);
+  c.quadraticCurveTo(cx, cy+R*1.30, cx-R*0.50, cy+R*1.16);
+  c.closePath(); c.fill();
+  c.fillStyle = SHIRT;
+  c.beginPath();
+  c.moveTo(cx-R*0.20, cy+R*1.18);
+  c.lineTo(cx, cy+R*1.42);
+  c.lineTo(cx+R*0.20, cy+R*1.18);
+  c.closePath(); c.fill();
+
+  // 脸
+  c.fillStyle = SKIN;
+  c.beginPath(); c.ellipse(cx, cy, R*0.90, R*1.00, 0, 0, 7); c.fill();
+  // 下巴微阴影
+  c.fillStyle = "rgba(200,140,130,.10)";
+  c.beginPath(); c.ellipse(cx, cy+R*0.80, R*0.30, R*0.10, 0, 0, 7); c.fill();
+
+  // 腮红
+  var blush = (mood==="calm") ? 0.10 : 0.22;
+  c.fillStyle = "rgba(255,120,140,"+blush+")";
+  c.beginPath(); c.ellipse(cx-R*0.56, cy+R*0.28, R*0.20, R*0.11, 0,0,7); c.fill();
+  c.beginPath(); c.ellipse(cx+R*0.56, cy+R*0.28, R*0.20, R*0.11, 0,0,7); c.fill();
+
+  // 眼睛
+  function eye(ex){
+    var ey = cy + R*0.03, er = (mood==="manic") ? R*0.30 : R*0.23;
+    if(mood === "bust"){
+      c.strokeStyle = "#8a4458"; c.lineWidth = Math.max(1.4, R*0.11); c.lineCap = "round";
+      c.beginPath();
+      c.moveTo(ex-er*0.9, ey-er*0.9); c.lineTo(ex+er*0.9, ey+er*0.9);
+      c.moveTo(ex+er*0.9, ey-er*0.9); c.lineTo(ex-er*0.9, ey+er*0.9);
+      c.stroke(); return;
+    }
+    if(mood === "broken"){
+      c.strokeStyle = "#8a4458"; c.lineWidth = Math.max(1.1, R*0.065);
+      c.beginPath();
+      for(var a=0; a<9; a+=0.22){
+        var rr = R*0.04 + a*R*0.024;
+        var px = ex + Math.cos(a*2.3)*rr, py = ey + Math.sin(a*2.3)*rr;
+        if(a===0) c.moveTo(px,py); else c.lineTo(px,py);
+      }
+      c.stroke(); return;
+    }
+    if(blink){
+      c.strokeStyle = "#4a2f3c"; c.lineWidth = Math.max(1.2, R*0.075); c.lineCap="round";
+      c.beginPath(); c.moveTo(ex-er*0.85, ey); c.quadraticCurveTo(ex, ey+er*0.45, ex+er*0.85, ey); c.stroke();
+      return;
+    }
+    // 眼白
+    c.fillStyle = "#fdfdfd";
+    c.beginPath(); c.ellipse(ex, ey, er*0.92, er*1.12, 0,0,7); c.fill();
+    // 虹膜
+    var ir = (mood==="manic") ? er*0.40 : er*0.70;
+    var ig = c.createLinearGradient(ex, ey-ir, ex, ey+ir);
+    if(mood==="win"){ ig.addColorStop(0,"#ffd98a"); ig.addColorStop(1,"#e8a13a"); }
+    else { ig.addColorStop(0,"#a05a7e"); ig.addColorStop(1,"#6d3550"); }
+    c.fillStyle = ig;
+    c.beginPath(); c.ellipse(ex, ey+R*0.02, ir, ir*1.10, 0,0,7); c.fill();
+    if(mood==="manic"){
+      c.fillStyle = "rgba(255,70,70,.9)";
+      c.beginPath(); c.ellipse(ex, ey+R*0.02, ir*0.45, ir*0.55, 0,0,7); c.fill();
+    }
+    c.fillStyle = "rgba(255,255,255,.95)";
+    c.beginPath(); c.ellipse(ex-er*0.28, ey-er*0.32, er*0.19, er*0.21, 0,0,7); c.fill();
+    c.fillStyle = "rgba(255,255,255,.45)";
+    c.beginPath(); c.ellipse(ex+er*0.24, ey+er*0.28, er*0.09, er*0.10, 0,0,7); c.fill();
+    if(mood==="win"){
+      c.strokeStyle = "rgba(255,225,140,.95)"; c.lineWidth = Math.max(1, R*0.05);
+      for(var k=0;k<4;k++){
+        var ang = k*Math.PI/2 + t*0.8;
+        c.beginPath();
+        c.moveTo(ex+Math.cos(ang)*er*1.25, ey+Math.sin(ang)*er*1.25);
+        c.lineTo(ex+Math.cos(ang)*er*1.75, ey+Math.sin(ang)*er*1.75);
+        c.stroke();
+      }
+    }
+  }
+  eye(cx - R*0.38);
+  eye(cx + R*0.38);
+
+  // 眉毛
+  c.strokeStyle = "#5c3948"; c.lineWidth = Math.max(1, R*0.05); c.lineCap="round";
+  var tilt = (mood==="manic"||mood==="broken") ? R*0.10 : (mood==="tense" ? R*0.05 : R*0.015);
+  c.beginPath(); c.moveTo(cx-R*0.62, cy-R*0.30+tilt); c.lineTo(cx-R*0.20, cy-R*0.38); c.stroke();
+  c.beginPath(); c.moveTo(cx+R*0.62, cy-R*0.30+tilt); c.lineTo(cx+R*0.20, cy-R*0.38); c.stroke();
+
+  // 嘴
+  c.strokeStyle = "#c05a72"; c.lineWidth = Math.max(1, R*0.055); c.lineCap="round";
+  c.beginPath();
+  var my = cy + R*0.44;
+  if(mood==="calm"){ c.arc(cx, my-R*0.06, R*0.12, 0.18*Math.PI, 0.82*Math.PI); }
+  else if(mood==="tense"){ c.moveTo(cx-R*0.09, my); c.lineTo(cx+R*0.09, my); }
+  else if(mood==="manic"){ c.arc(cx, my-R*0.10, R*0.19, 0.10*Math.PI, 0.90*Math.PI); }
+  else if(mood==="win"){ c.arc(cx, my-R*0.12, R*0.17, 0.05*Math.PI, 0.95*Math.PI); }
+  else { c.moveTo(cx-R*0.11, my+R*0.02); c.quadraticCurveTo(cx, my-R*0.08, cx+R*0.11, my+R*0.02); }
+  c.stroke();
+
+  // 刘海
+  c.fillStyle = HAIR;
+  c.beginPath();
+  c.moveTo(cx-R*0.96, cy-R*0.12);
+  c.quadraticCurveTo(cx-R*1.00, cy-R*1.34, cx, cy-R*1.14);
+  c.quadraticCurveTo(cx+R*1.00, cy-R*1.34, cx+R*0.96, cy-R*0.12);
+  c.quadraticCurveTo(cx+R*0.60, cy-R*0.58, cx+R*0.24, cy-R*0.50);
+  c.quadraticCurveTo(cx+R*0.04, cy-R*0.02, cx-R*0.15, cy-R*0.52);
+  c.quadraticCurveTo(cx-R*0.58, cy-R*0.60, cx-R*0.96, cy-R*0.12);
+  c.closePath(); c.fill();
+
+  // 发丝高光
+  c.strokeStyle = "rgba(255,255,255,.055)"; c.lineWidth = Math.max(1, R*0.05); c.lineCap="round";
+  c.beginPath(); c.arc(cx, cy-R*0.34, R*0.72, 1.24*Math.PI, 1.76*Math.PI); c.stroke();
+
+  // 两侧发
+  c.fillStyle = HAIR2;
+  c.beginPath();
+  c.moveTo(cx-R*0.90, cy-R*0.28);
+  c.quadraticCurveTo(cx-R*1.26, cy+R*0.60, cx-R*1.00, cy+R*1.16);
+  c.quadraticCurveTo(cx-R*0.78, cy+R*0.58, cx-R*0.78, cy-R*0.18);
+  c.closePath(); c.fill();
+  c.beginPath();
+  c.moveTo(cx+R*0.90, cy-R*0.28);
+  c.quadraticCurveTo(cx+R*1.26, cy+R*0.60, cx+R*1.00, cy+R*1.16);
+  c.quadraticCurveTo(cx+R*0.78, cy+R*0.58, cx+R*0.78, cy-R*0.18);
+  c.closePath(); c.fill();
+
+  // 汗
+  if(mood==="tense" || mood==="manic"){
+    c.fillStyle = "rgba(150,220,255,.85)";
+    var dy = (t*26 % (R*0.5));
+    c.beginPath(); c.ellipse(cx+R*0.84, cy-R*0.16+dy, R*0.07, R*0.10, 0,0,7); c.fill();
+  }
+  // 上头火花
+  if(mood==="manic" || mood==="broken"){
+    c.fillStyle = "rgba(255,120,90,.8)";
+    for(var i=0;i<3;i++){
+      var a = t*2 + i*2.1;
+      c.beginPath();
+      c.arc(cx+Math.cos(a)*R*1.30, cy-R*0.66+Math.sin(a)*R*0.26, R*0.065, 0, 7);
+      c.fill();
+    }
+  }
+  c.restore();
+
+  // 径向柔化（去掉画布硬边）
+  var rm = c.createRadialGradient(cx, cy+R*0.30, R*0.30, cx, cy+R*0.30, Math.max(w,h)*0.70);
+  rm.addColorStop(0, "rgba(0,0,0,1)");
+  rm.addColorStop(0.68, "rgba(0,0,0,1)");
+  rm.addColorStop(1, "rgba(0,0,0,0)");
+  c.globalCompositeOperation = "destination-in";
+  c.fillStyle = rm; c.fillRect(0,0,w,h);
+  c.globalCompositeOperation = "source-over";
+
+  // 底部柔化
+  var fade = c.createLinearGradient(0, h*0.84, 0, h);
+  fade.addColorStop(0, "rgba(0,0,0,0)");
+  fade.addColorStop(1, "rgba(0,0,0,1)");
+  c.globalCompositeOperation = "destination-out";
+  c.fillStyle = fade;
+  c.fillRect(0, h*0.84, w, h*0.16);
+  c.globalCompositeOperation = "source-over";
+}
+
+function drawPao(ts){
+  if(!paoEl() || !pctx || PW < 10) return;
+  blinkAt -= 1/60;
+  if(blinkAt <= 0){ blinkHold = 0.12; blinkAt = 2.5 + Math.random()*2.5; }
+  if(blinkHold > 0) blinkHold -= 1/60;
+  var mood = paoMood();
+  var blink = blinkHold > 0 && mood!=="bust" && mood!=="broken" && mood!=="manic";
+  drawGirl(pctx, PW, PH, mood, ts/1000, blink);
+}
+
+/* ============ 音效（WebAudio 合成） ============ */
+var AC = null;
+function ac(){
+  if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } }
+  if(AC && AC.state === "suspended") AC.resume();
+  return AC;
+}
+function beep(freq, dur, type, gain, slideTo){
+  var c = ac(); if(!c) return;
+  var o = c.createOscillator(), g = c.createGain();
+  o.type = type || "sine"; o.frequency.value = freq;
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + dur);
+  g.gain.value = gain || 0.06;
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(); o.stop(c.currentTime + dur + 0.02);
+}
+function noise(dur, gain, hp){
+  var c = ac(); if(!c) return;
+  var n = Math.floor(c.sampleRate * dur);
+  var buf = c.createBuffer(1, n, c.sampleRate);
+  var d = buf.getChannelData(0);
+  for(var i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+  var src = c.createBufferSource(); src.buffer = buf;
+  var f = c.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 800;
+  var g = c.createGain(); g.gain.value = gain || 0.12;
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+  src.connect(f); f.connect(g); g.connect(c.destination); src.start();
+}
+var SFX = {
+  click: function(){ beep(420,0.05,"square",0.03); },
+  coin:  function(){ beep(880,0.08,"triangle",0.05); setTimeout(function(){beep(1320,0.1,"triangle",0.04);},60); },
+  tick:  function(){ beep(1400,0.03,"sine",0.03); },
+  heart: function(){ beep(60,0.16,"sine",0.14,44); },
+  glass: function(){ noise(0.5,0.22,1200); beep(180,0.35,"sawtooth",0.08,50); },
+  knock: function(){ beep(110,0.12,"square",0.10); setTimeout(function(){beep(96,0.16,"square",0.09);},150); },
+  alarm: function(){ beep(760,0.16,"sawtooth",0.07); setTimeout(function(){beep(560,0.2,"sawtooth",0.07);},170); },
+  boom:  function(){ noise(0.8,0.3,300); beep(70,0.7,"sine",0.16,30); }
+};
+
+/* ============ DOM ============ */
+var $ = function(id){ return document.getElementById(id); };
+var cv = $("chart"), ctx = cv.getContext("2d");
+var W=0,H=0,DPR=1;
+function resize(){
+  var r = cv.parentNode.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = r.width; H = r.height;
+  cv.width = Math.floor(W*DPR); cv.height = Math.floor(H*DPR);
+  cv.style.width = W+"px"; cv.style.height = H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  resizePao();
+}
+window.addEventListener("resize", function(){ resize(); });
+
+/* ============ 保证金计算 ============ */
+function maintRateFor(lev){ return MAINT[lev] || 0.05; }
+function posEquity(p){
+  if(!p) return S.cash;
+  return p.margin + p.nominal * (S.price/p.entry - 1);
+}
+function posMaint(p){
+  if(!p) return 0;
+  return p.nominal * p.maintRate;
+}
+function liqPrice(p){
+  if(!p) return 0;
+  return p.entry * (1 + (p.nominal*p.maintRate - p.margin)/p.nominal);
+}
+function debtTotal(){ return S.debtP + S.debtI; }
+
+/* ============ 建仓 / 操作 ============ */
+function openPos(){
+  if(S.pos) return;
+  if(S.cash < 10000) return;
+  var nominal = S.cash * S.lev;
+  var fee = nominal * FEE;
+  S.cash -= fee;
+  S.stats.fees += fee;
+  S.pos = {
+    entry: S.price, margin: S.cash, nominal: nominal,
+    lev: S.lev, maintRate: maintRateFor(S.lev), openedAt: S.t
+  };
+  S.stats.trades++;
+  S.cash = 0;                      // 全部转成保证金
+  SFX.click();
+}
+
+function changeLev(){
+  if(!S.pos){ openPos(); return; }
+  var p = S.pos;
+  var idx = LEV_STEPS.indexOf(p.lev);
+  if(idx < 0) idx = 0;
+  var penalty2 = S.tilt >= 85;
+  var nidx = (idx + 1) % LEV_STEPS.length;    // 10→50→100→10 循环，严格按一档走
+  var newLev = LEV_STEPS[nidx];
+
+  // 先把这段盈亏结进保证金，再按新倍数从当前价重新起算
+  var ratio = S.price / p.entry;
+  p.margin += p.nominal * (ratio - 1);
+  p.entry = S.price;
+  if(p.margin <= 0){
+    S.busted = true; S.pos = null; S.cash = 0;
+    SFX.glass();
+    setTimeout(function(){ SFX.boom(); }, 120);
+    finishGame(false, "bust");
+    return;
+  }
+
+  var newNominal = p.margin * newLev;
+  var delta = Math.abs(newNominal - p.nominal);
+  var fee = delta * FEE;
+  if(fee > 0 && S.cash >= fee){
+    S.cash -= fee; S.stats.fees += fee;
+  }else if(fee > 0){
+    if(newLev > p.lev) flashNews("手上没钱，这次不收手续费");
+  }
+
+  var oldLev = p.lev;
+  p.nominal = newNominal;
+  p.lev = newLev;
+  p.maintRate = maintRateFor(newLev) * (penalty2 ? 1.5 : 1);
+  S.tilt = clamp(S.tilt + 6, 0, 100);
+  flashNews("倍数 ×" + oldLev + " → ×" + newLev + (penalty2 ? "（上头，维持保证金 ×1.5）" : ""));
+  SFX.click();
+}
+
+function nextLev(cur){
+  var i = LEV_STEPS.indexOf(cur);
+  if(i < 0) return LEV_STEPS[0];
+  return LEV_STEPS[(i+1) % LEV_STEPS.length];   // 到顶转回最低档
+}
+
+function repayDebt(){
+  var d = debtTotal();
+  if(d <= 0){ flashNews("不欠钱，不用还"); return; }
+  if(S.cash < 1000){ flashNews("手上没钱了，先卖出或去借"); return; }
+  var pay = Math.min(S.cash, d);
+  S.cash -= pay;
+  var toInt = Math.min(pay, S.debtI);
+  S.debtI -= toInt;
+  S.debtP = Math.max(0, S.debtP - (pay - toInt));
+  if(debtTotal() <= 0){ S.debtP = 0; S.debtI = 0; }
+  S.tilt = clamp(S.tilt - 3, 0, 100);
+  SFX.coin();
+  if(S.forcedActive && debtTotal() <= FORCED_LINE){
+    S.forcedActive = false;
+    flashNews("还了 " + money(pay) + "，催债暂停了");
+  }else if(debtTotal() <= 0){
+    flashNews("还了 " + money(pay) + " · 欠款清零");
+  }else{
+    flashNews("还了 " + money(pay) + " · 还欠 " + money(debtTotal()));
+  }
+}
+
+function addMargin(){
+  if(!S.pos){
+    if(S.cash > 0){ openPos(); }
+    return;
+  }
+  var amt = Math.min(S.cash, Math.max(50000, S.pos.margin*0.5));
+  if(amt <= 0){ flashNews("手上的钱没了——去借？"); return; }
+  S.cash -= amt;
+  S.pos.margin += amt;
+  S.tilt = clamp(S.tilt + 4, 0, 100);
+  SFX.coin();
+}
+
+function closeToCash(){
+  if(!S.pos) return S.cash;
+  var p = S.pos;
+  var pnl = p.nominal * (S.price/p.entry - 1);
+  var gross = p.margin + pnl;
+  var fee = (gross > 0) ? Math.min(p.nominal * FEE, gross) : 0;   // 已经没钱了就不抽
+  var proceeds = gross - fee;
+  S.stats.fees += fee;
+  S.stats.holdMs += (S.t - p.openedAt)*1000;
+  S.lev = p.lev;                      // 下次买入沿用这次的倍数
+  S.pos = null;
+  S.cash = Math.max(proceeds, 0);
+  return S.cash;
+}
+
+function sellAll(){
+  if(!S.pos) return;
+  var got = closeToCash();
+  SFX.coin();
+  flashNews("全卖了，落袋 " + money(got) + " · 下次买入仍是 ×" + S.lev);
+  if(debtTotal() === 0 && S.cash >= TARGET && !S.stayPlay){
+    finishGame(true, "sell");
+  }
+}
+
+function settle(reason){
+  if(S.pos) closeToCash();
+  var d = debtTotal(), cleared = false;
+  if(d > 0){
+    if(S.cash >= d){ S.cash -= d; S.debtP = 0; S.debtI = 0; cleared = true; }
+    else { S.cash = 0; S.forcedHit = true; }
+  } else cleared = true;
+  finishGame(cleared, reason || "settle");
+}
+
+function togglePause(force){
+  if(!S || S.phase !== "play") return;
+  S.paused = (force === undefined) ? !S.paused : !!force;
+  $("pausePanel").classList.toggle("on", S.paused);
+  $("btnPause").innerHTML = (S.paused ? "继续" : "暂停") +
+    "<span class='sub'>" + (S.paused ? "点一下接着来" : "行情和债务一起停") + "</span>";
+}
+
+/* ============ 结局 ============ */
+var ENDINGS = {
+  win:   {face:"😎", title:"2000万上岸", sub:"老实赚钱，很无趣吧？", key:"s1"},
+  seven: {face:"🫥", title:"利息滚死", sub:"你赚了，但钱不是你的。", key:"s7"},
+  eight: {face:"🫣", title:"偷爸爸的300万", sub:"这次真的偷了。", key:"s8"}
+};
+function loadGallery(){
+  try{ return JSON.parse(localStorage.getItem("kurumiGallery")||"{}"); }catch(e){ return {}; }
+}
+function saveGallery(g){
+  try{ localStorage.setItem("kurumiGallery", JSON.stringify(g)); }catch(e){}
+}
+
+function finishGame(cleared, reason){
+  S.phase = "over";
+  var ending = null;
+  var bust = (reason === "bust") || S.busted;
+
+  if(cleared && S.cash >= TARGET) ending = "win";
+  else if(S.stats.borrowed >= MAX_DEBT && (bust || S.forcedHit || reason === "forced" || !cleared)) ending = "eight";
+  else if(cleared && S.cash <= 100000) ending = "seven";
+
+  var title, sub, face;
+  if(ending){
+    var e = ENDINGS[ending];
+    face = e.face; title = e.title; sub = e.sub;
+    var g = loadGallery(); g[e.key] = 1; saveGallery(g);
+  }else{
+    face = bust ? "🕳️" : "😐";
+    if(!cleared && debtTotal() > 0){
+      face = "😨"; title = "债主上门";
+      sub = "钱没了，欠的一分没少——这才是最糟的。";
+    }
+    else if(bust){ title = "钱没了，人还在"; sub = "钱全没了。屏幕上那些数字，从来没属于过你。"; }
+    else if(!cleared){ title = "债主上门"; sub = "收手换来的钱不够还，剩下的用别的方式还。"; }
+    else { title = "就这样吧"; sub = "你收手了，什么也没变。"; }
+  }
+  var cutKey = ending || (bust ? "bust" : (!cleared ? (debtTotal() > 0 ? "debt" : "nothing") : "bust"));
+  var cut = CUTSCENE[cutKey] || CUTSCENE.nothing;
+  var mood = (ending === "win") ? "win" : (bust ? "bust" : "broken");
+
+  if(bust) crackScreen();
+  if(ending === "win") coinRain(30);
+
+  S.lastEnding = ending || null;
+  STORY.play(cut, function(){ showOver(face, title, sub, ending); }, mood);
+}
+
+/* ============ 覆盖层 ============ */
+function showOver(face, title, sub, ending){
+  $("keepPlay").style.display = (ending === "win") ? "block" : "none";
+  $("overFace").textContent = face;
+  $("overTitle").textContent = title;
+  $("overTitle").style.color = (ending==="win") ? "#7dffc4" : (ending ? "#ffb48a" : "#e8eaee");
+  $("overSub").textContent = sub;
+
+  var hold = Math.round(S.stats.holdMs/1000);
+  $("overStats").innerHTML =
+    "动手次数 <b>"+S.stats.trades+"</b> 次<br>"+
+    "拿了多久 <b>"+hold+"</b> 秒　·　被抽走 <b>"+money(S.stats.fees)+"</b><br>"+
+    "一共借了 <b>"+money(S.stats.borrowed)+"</b>　·　利息交掉 <b class='warn'>"+money(S.stats.interest)+"</b>";
+
+  var g = loadGallery();
+  ["s1","s7","s8"].forEach(function(k){
+    var el = $(k);
+    if(g[k]) el.classList.add("got");
+  });
+  $("over").classList.add("on");
+  S.overAt = Date.now();
+  if(ending) SFX.boom(); else SFX.knock();
+}
+
+/* ============ 高利贷 ============ */
+var loanAmt = 300000;
+function borrowRate(amount){
+  var after = S.debtP + amount;
+  var base = after < 1000000 ? 18 : (after < 2000000 ? 24 : 30);
+  return base + Math.max(0, S.borrowCount) * 2;
+}
+function openLoan(){
+  if(S.phase !== "play") return;
+  S.tilt = clamp(S.tilt + 3, 0, 100);
+  renderLoan();
+  $("loanModal").classList.add("on");
+  SFX.click();
+}
+function renderLoan(){
+  var left = MAX_DEBT - S.debtP;
+  var amt = Math.min(loanAmt, left);
+  if(amt < 300000){ amt = left; }
+  loanAmt = amt;
+  var rate = borrowRate(amt);
+  $("lmAmt").textContent = money(amt);
+  $("lmRate").textContent = rate + "%";
+  $("lmRateTag").textContent = "第 "+(S.borrowCount+1)+" 笔";
+  $("lmInt").textContent = money(amt*rate/100);
+  $("lmPrin").textContent = money(S.debtP);
+  $("lmAcc").textContent = money(S.debtI);
+  $("lmTotal").textContent = money(debtTotal());
+  $("lmLeft").textContent = money(Math.max(0, FORCED_LINE - debtTotal()));
+  [].forEach.call($("lmAmounts").children, function(b){
+    b.classList.toggle("sel", parseInt(b.dataset.a,10) === loanAmt);
+    b.disabled = S.debtP >= MAX_DEBT;
+  });
+}
+function doBorrow(){
+  var left = MAX_DEBT - S.debtP;
+  if(left < 300000){ $("loanModal").classList.remove("on"); return; }
+  var amt = Math.min(loanAmt, left);
+  if(amt <= 0){ $("loanModal").classList.remove("on"); return; }
+  S.debtP += amt;
+  S.cash += amt;
+  S.stats.borrowed += amt;
+  S.borrowCount++;
+  S.tilt = clamp(S.tilt + 5, 0, 100);
+  $("loanModal").classList.remove("on");
+  $("lmConfirm").style.display = "none";
+  SFX.coin();
+  flashNews("到账 "+money(amt)+" · 月息 "+borrowRate(0)+"%");
+}
+
+/* ============ 价格引擎 ============ */
+function stepPrice(){
+  S.t += TICK_MS/1000;
+
+  // 行情事件
+  if(!S.eventName && S.t > S.nextEventAt){
+    var up = Math.random() < 0.55;
+    S.eventName = up ? "群里都在喊多，一字板拉升" : "突然跳水，谁都跑不掉";
+    S.eventBias = up ? 0.014 : -0.016;
+    S.eventUntil = S.t + 8 + Math.random()*6;
+    S.nextEventAt = S.t + 9999;
+    S.secondEventAt = S.t + 40 + Math.random()*30;
+    flashNews(S.eventName);
+    SFX.alarm();
+  }
+  if(S.eventName && S.t > S.eventUntil){
+    S.eventName = ""; S.eventBias = 0;
+    if(S.secondEventAt && S.t < S.secondEventAt){
+      // 预留
+    }
+  }
+  if(!S.eventName && S.secondEventAt && S.t > S.secondEventAt){
+    var up2 = Math.random() < 0.5;
+    S.eventName = up2 ? "又一轮单边行情" : "第二次跳水";
+    S.eventBias = up2 ? 0.015 : -0.017;
+    S.eventUntil = S.t + 8 + Math.random()*6;
+    S.secondEventAt = 0;
+    flashNews(S.eventName);
+    SFX.alarm();
+  }
+
+  // 慢锚随行情漂移
+  S.anchor += (Math.random()*2-1) * 0.0006 * S.anchor;
+  var vol = 0.0030 + (S.eventName ? 0.0020 : 0);
+  if(S.tilt >= 85) vol *= 1.15;               // 上头的时候行情更晃（体感）
+  var pull = 0.05 * (S.anchor - S.price);
+  var noiseTerm = (Math.random()*2-1) * vol * S.price;
+  var jump = (Math.random() < 0.006) ? (Math.random()*2-1) * 0.015 * S.price : 0;
+  S.price = Math.max(5, S.price + pull + noiseTerm + jump + S.eventBias*S.price);
+
+  S.hist.push(S.price);
+  if(S.hist.length > 180) S.hist.shift();
+
+  // 利息：每 5 秒
+  if(Math.floor(S.t*1000/MONTH_MS) > S.lastMonth){
+    S.lastMonth = Math.floor(S.t*1000/MONTH_MS);
+    if(S.debtP > 0){
+      var rate = borrowRate(0);
+      var it = S.debtP * rate/100;
+      S.debtI += it;
+      S.stats.interest += it;
+      SFX.tick();
+      flashNews("本月利息 "+money(it)+" 已计入（月息 "+rate+"%）");
+      if(debtTotal() > FORCED_LINE && !S.forcedActive){
+        S.forcedActive = true;
+        S.forcedUntil = S.t + 10;
+        SFX.alarm(); SFX.knock();
+      }
+    }
+  }
+
+  // 强制还款倒计时
+  if(S.forcedActive && S.t > S.forcedUntil){
+    S.forcedHit = true;
+    settle("forced");
+    return;
+  }
+
+  // 上头值
+  if(S.pos) S.tilt = clamp(S.tilt + 0.18*(TICK_MS/1000), 0, 100);
+  else S.tilt = clamp(S.tilt - 0.05*(TICK_MS/1000), 0, 100);
+
+  // 爆仓判定
+  if(S.pos){
+    var eq = posEquity(S.pos), m = posMaint(S.pos);
+    if(eq <= m){
+      S.busted = true;
+      S.stats.holdMs += (S.t - S.pos.openedAt)*1000;
+      S.pos = null;
+      S.cash = 0;
+      SFX.glass();
+      setTimeout(function(){ SFX.boom(); }, 120);
+      finishGame(false, "bust");
+    }
+  }
+}
+
+/* ============ 渲染 ============ */
+function drawChart(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  if(W<10 || H<10) return;
+
+  var h = S.hist;
+  var lo = Infinity, hi = -Infinity;
+  for(var i=0;i<h.length;i++){ if(h[i]<lo) lo=h[i]; if(h[i]>hi) hi=h[i]; }
+  if(S.pos){
+    lo = Math.min(lo, S.pos.entry); hi = Math.max(hi, S.pos.entry);
+  }
+  var pad = Math.max((hi-lo)*0.28, 0.22);
+  lo -= pad; hi += pad;
+  var y = function(p){ return H - (p-lo)/(hi-lo)*H; };
+  var x = function(i){ return i/(h.length-1||1) * W; };
+
+  // 网格
+  ctx.strokeStyle = "rgba(255,255,255,.045)"; ctx.lineWidth = 1;
+  for(var g=0; g<=4; g++){
+    var yy = H*g/4;
+    ctx.beginPath(); ctx.moveTo(0,yy); ctx.lineTo(W,yy); ctx.stroke();
+  }
+
+  // 爆仓线
+  if(S.pos){
+    var lq = liqPrice(S.pos);
+    if(lq >= lo && lq <= hi){
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,70,70,.75)"; ctx.lineWidth = 1.5;
+      ctx.setLineDash([6,5]);
+      ctx.beginPath(); ctx.moveTo(0,y(lq)); ctx.lineTo(W,y(lq)); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = "rgba(255,90,90,.85)"; ctx.font = "10px sans-serif";
+      ctx.fillText("归零线 "+lq.toFixed(2), 6, y(lq)-4);
+    }else{
+      // 爆仓线在视野之外：钉在底部提示
+      ctx.save();
+      ctx.fillStyle = "rgba(255,70,70,.10)"; ctx.fillRect(0,H-54,W,16);
+      ctx.fillStyle = "rgba(255,110,110,.95)"; ctx.font = "10px sans-serif";
+      ctx.fillText("▼ 归零线 "+lq.toFixed(2)+"　再跌 "+((S.price-lq)/S.price*100).toFixed(1)+"% 就没了", 6, H-23);
+      ctx.restore();
+    }
+
+    // 入场线
+    ctx.save();
+    ctx.strokeStyle = "rgba(120,180,255,.35)"; ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(0,y(S.pos.entry)); ctx.lineTo(W,y(S.pos.entry)); ctx.stroke();
+    ctx.restore();
+  }
+
+  // 价格线
+  var grd = ctx.createLinearGradient(0,0,0,H);
+  var upTrend = h[h.length-1] >= h[0];
+  grd.addColorStop(0, upTrend ? "rgba(46,230,168,.95)" : "rgba(255,92,92,.95)");
+  grd.addColorStop(1, upTrend ? "rgba(46,230,168,.15)" : "rgba(255,92,92,.15)");
+  ctx.strokeStyle = grd; ctx.lineWidth = 2; ctx.lineJoin = "round";
+  ctx.beginPath();
+  for(var k=0;k<h.length;k++){
+    var px = x(k), py = y(h[k]);
+    if(k===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+
+  // 面积
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.closePath();
+  var fill = ctx.createLinearGradient(0,0,0,H);
+  fill.addColorStop(0, upTrend ? "rgba(46,230,168,.16)" : "rgba(255,92,92,.16)");
+  fill.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = fill; ctx.fill();
+
+  // 当前点
+  var cx = W, cy = y(S.price);
+  ctx.fillStyle = upTrend ? "#2ee6a8" : "#ff5c5c";
+  ctx.beginPath(); ctx.arc(cx-3, cy, 4, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 0.25;
+  ctx.beginPath(); ctx.arc(cx-3, cy, 9, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+var newsTimer = 0;
+function flashNews(text){
+  $("news").textContent = text;
+}
+var RUMORS = [
+  "群友 A：这波稳了，满仓干",
+  "群友 B：我昨天就是这么没的",
+  "群里有人晒收益截图（PS 的）",
+  "分析师：短期回调是上车机会",
+  "你已经连续盯盘 3 分钟了",
+  "隔壁老哥加到了 100 倍"
+];
+
+function setBtn(el, html){
+  if(el.getAttribute("data-h") !== html){ el.innerHTML = html; el.setAttribute("data-h", html); }
+}
+
+function updateHUD(){
+  var eq = S.pos ? posEquity(S.pos) : S.cash;
+  $("hCash").textContent = money(S.cash);
+  $("hEquity").textContent = S.pos ? money(eq) : "—";
+  $("hEquity").className = "v" + (eq < 0 ? " neg" : "");
+
+  if(S.pos){
+    var lq = liqPrice(S.pos);
+    var dist = (S.price - lq)/S.price*100;
+    $("hDist").textContent = dist.toFixed(2) + "%";
+    $("hDist").className = "v small" + (dist < 3 ? " neg" : "");
+    var nx = nextLev(S.pos.lev);
+    var down = nx < S.pos.lev;
+    setBtn($("btnLev"), (down ? "转回 ×"+nx : "押更大 ×"+nx) + "<span class='sub'>" +
+      "现在 ×"+S.pos.lev+" → 点了变 ×"+nx + (down ? "（回最低档）" : "") + "</span>");
+    $("btnLev").disabled = false;
+    setBtn($("btnBuy"), "已在场内<span class='sub'>要加仓点「押更大」</span>");
+    $("btnBuy").disabled = true;
+    $("btnSell").disabled = false;
+    $("btnAdd").disabled = (S.cash < 1);
+  }else{
+    $("hDist").textContent = "空着手";
+    $("hDist").className = "v small";
+    setBtn($("btnLev"), "押更大 → ×"+nextLev(S.lev)+"<span class='sub'>先买入才能押更大</span>");
+    $("btnLev").disabled = true;
+    setBtn($("btnBuy"), "买入 · 全押 ×"+S.lev+"<span class='sub'>按一下，钱全押上</span>");
+    $("btnBuy").disabled = false;
+    $("btnSell").disabled = true;
+    $("btnAdd").disabled = true;
+  }
+
+  var dt = debtTotal();
+  $("hDebt").textContent = money(dt);
+  $("hDebt").className = "v small" + (dt > 0 ? " neg" : "");
+  var pct = clamp(dt/FORCED_LINE*100, 0, 100);
+  var fill = $("debtFill");
+  fill.style.width = pct+"%";
+  fill.style.background = dt <= 0 ? "#555" : (dt < 1e6 ? "#d8b24a" : (dt < 2e6 ? "#e8842c" : "#ff3b3b"));
+
+  $("btnRepay").disabled = (dt <= 0 || S.cash < 1000);
+  $("hTilt").textContent = Math.round(S.tilt);
+  $("hTilt").className = "v small" + (S.tilt > 70 ? " neg" : "");
+
+  var face = S.tilt >= 85 ? "🔥" : (S.tilt >= 50 ? "😵‍💫" : "😐");
+  $("face").textContent = face;
+  $("tiltEdge").style.opacity = S.tilt >= 70 ? String((S.tilt-70)/30*0.9) : "0";
+
+  $("priceTag").textContent = S.price.toFixed(2);
+
+  var bust = S.forcedActive;
+  $("news").style.color = bust ? "#ff5c5c" : "#8b95a5";
+  if(bust){
+    $("news").textContent = "⚠ 催债倒计时 " + Math.max(0, S.forcedUntil - S.t).toFixed(1) + " 秒 —— 快收手还钱";
+  }
+}
+
+/* ============ 主循环 ============ */
+var acc = 0, last = 0, heartT = 0;
+function loop(ts){
+  if(!last) last = ts;
+  var dt = Math.min(100, ts - last);
+  last = ts;
+
+  drawPao(ts);
+
+  if(S && S.phase === "play"){
+    if(S.paused){ drawChart(); updateHUD(); requestAnimationFrame(loop); return; }
+    acc += dt;
+    while(acc >= TICK_MS){
+      acc -= TICK_MS;
+      stepPrice();
+      if(S.phase !== "play") break;
+    }
+    // 随机谣言
+    newsTimer += dt;
+    if(newsTimer > 7000 && !S.eventName && !S.forcedActive){
+      newsTimer = 0;
+      if(Math.random() < 0.7){ flashNews(RUMORS[Math.floor(Math.random()*RUMORS.length)]); S.tilt = clamp(S.tilt+1.5,0,100); }
+    }
+    // 心跳
+    if(S.tilt >= 70 && S.phase === "play"){
+      heartT += dt;
+      if(heartT > (S.tilt >= 85 ? 480 : 700)){ heartT = 0; SFX.heart(); }
+    }
+    drawChart();
+    updateHUD();
+  }
+  requestAnimationFrame(loop);
+}
+
+
+/* ============ 背景音乐（WebAudio 实时合成） ============ */
+var BGM = {
+  on: false, timer: null, next: 0, step: 0,
+  CH: [[220.00,261.63,329.63,392.00],
+       [174.61,220.00,261.63,349.23],
+       [196.00,246.94,293.66,392.00],
+       [164.81,196.00,246.94,329.63]],
+  start: function(){
+    var c = ac(); if(!c) return;
+    this.on = true; this.next = c.currentTime + 0.08;
+    if(!this.timer) this.timer = setInterval(this.tick.bind(this), 120);
+    this.sync();
+  },
+  stop: function(){
+    this.on = false;
+    if(this.timer){ clearInterval(this.timer); this.timer = null; }
+    this.sync();
+  },
+  toggle: function(){ this.on ? this.stop() : this.start(); },
+  sync: function(){
+    var b = $("bgmBtn"); if(b) b.textContent = this.on ? "♪ 音乐 开" : "♪ 音乐 关";
+  },
+  tick: function(){
+    var c = AC; if(!c || !this.on) return;
+    var guard = 0;
+    while(this.next < c.currentTime + 0.45 && guard++ < 12){
+      this.voice(this.next);
+      this.next += 0.30;
+      this.step++;
+    }
+  },
+  voice: function(t){
+    var st = this.step % 32;
+    var ch = this.CH[Math.floor(st/8) % 4];
+    var tense = S && S.tilt >= 60 && S.phase === "play";
+    if(st % 8 === 0) this.note(t, ch[0]*0.5, 1.9, "sine", 0.055);
+    this.note(t, ch[(st*3) % 4] * 2, 0.42, "triangle", 0.014);
+    if(st % 4 === 2) this.note(t, ch[2], 0.6, "sine", 0.009);
+    if(tense && st % 2 === 1) this.note(t, ch[1]*0.5, 0.20, "sawtooth", 0.007);
+  },
+  note: function(t, f, dur, type, g){
+    var c = AC; if(!c) return;
+    var o = c.createOscillator(), gn = c.createGain(), lp = c.createBiquadFilter();
+    o.type = type || "sine"; o.frequency.value = f;
+    lp.type = "lowpass"; lp.frequency.value = 1600;
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(g, t + 0.03);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp); lp.connect(gn); gn.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.06);
+  }
+};
+
+/* ============ 剧情分镜 ============ */
+var STORY = {
+  q: [], i: 0, typing: false, timer: null, done: null, active: false, mood: "calm",
+  play: function(lines, done, mood){
+    this.q = lines.slice(); this.i = 0; this.done = done || null;
+    this.mood = mood || "calm"; this.active = true;
+    $("story").classList.add("show");
+    this.sizePao();
+    this.render();
+    requestAnimationFrame(storyLoop);
+  },
+  sizePao: function(){
+    var c = $("storyPao"); if(!c) return;
+    var r = c.getBoundingClientRect(); if(!r.width) return;
+    c.width = Math.round(r.width*DPR); c.height = Math.round(r.height*DPR);
+    spW = r.width; spH = r.height;
+    spCtx = c.getContext("2d");
+    spCtx.setTransform(DPR,0,0,DPR,0,0);
+  },
+  render: function(){
+    var ln = this.q[this.i] || ["——",""];
+    $("storyWho").textContent = ln[0];
+    var txt = ln[1], el = $("storyText"), n = 0, self = this;
+    el.textContent = ""; this.typing = true;
+    clearInterval(this.timer);
+    this.timer = setInterval(function(){
+      n++;
+      el.textContent = txt.slice(0, n);
+      if(n >= txt.length){ clearInterval(self.timer); self.typing = false; }
+    }, 30);
+  },
+  next: function(){
+    if(!this.active) return;
+    if(this.typing){
+      clearInterval(this.timer); this.typing = false;
+      $("storyText").textContent = this.q[this.i][1];
+      return;
+    }
+    this.i++;
+    if(this.i >= this.q.length){ this.end(); return; }
+    this.render();
+  },
+  end: function(){
+    this.active = false; clearInterval(this.timer);
+    $("story").classList.remove("show");
+    var d = this.done; this.done = null;
+    if(d) d();
+  }
+};
+var spCtx = null, spW = 0, spH = 0;
+function storyLoop(ts){
+  if(!STORY.active) return;
+  if(spCtx && spW > 10) drawGirl(spCtx, spW, spH, STORY.mood, ts/1000, false);
+  requestAnimationFrame(storyLoop);
+}
+
+var PROLOGUE = [
+  ["——", "你叫久留美，十九岁。"],
+  ["——", "爸爸出差前，把 100 万交到你手上：替我收着，别乱动。"],
+  ["久留美", "就放一天，赚一点，明天就还回去。"],
+  ["——", "那天晚上，你打开了那个红色的软件。"],
+  ["久留美", "一百倍而已……看着挺稳的。"]
+];
+
+var CUTSCENE = {
+  win: [["久留美", "两千万……真的做到了。"],
+        ["——", "够上岸了。可是手，还在痒吗？"]],
+  seven: [["久留美", "赚了，全赚了！"],
+          ["——", "可利息比赚的还多。"],
+          ["久留美", "……那这些钱，到底是谁的？"]],
+  eight: [["——", "爸爸提前回来了。"],
+          ["久留美", "抽屉……我锁了。"],
+          ["——", "锁在里面的，是一张借条。"]],
+  forced: [["——", "门外有人在敲门。"],
+           ["久留美", "我不在家，我不在家。"],
+           ["——", "利息每五秒翻一次，门不会自己走。"]],
+  debt: [["——", "钱没了，欠的一分没少。"],
+         ["久留美", "再借一点，只要翻本就行……"]],
+  bust: [["——", "屏幕上的数字开始往下掉。"],
+         ["久留美", "卖……快卖啊！"],
+         ["——", "已经晚了。"],
+         ["——", "那一行数字，从来没有属于过你。"]],
+  nothing: [["久留美", "算了，不玩了。"],
+            ["——", "你收手了，什么也没变。"]]
+};
+
+
+/* ============ 爆仓碎裂 / 金币雨 ============ */
+function crackScreen(){
+  var c = $("crack"); if(!c) return;
+  var r = { width: window.innerWidth, height: window.innerHeight };
+  c.style.width = r.width+"px"; c.style.height = r.height+"px";
+  c.width = Math.round(r.width*DPR); c.height = Math.round(r.height*DPR);
+  var x = c.getContext("2d");
+  x.setTransform(DPR,0,0,DPR,0,0);
+  x.clearRect(0,0,r.width,r.height);
+  var cx = r.width*(0.32+Math.random()*0.36), cy = r.height*(0.28+Math.random()*0.24);
+  x.lineCap = "round";
+  for(var i=0;i<16;i++){
+    var a = Math.random()*Math.PI*2, len = r.width*(0.16+Math.random()*0.55);
+    x.beginPath(); x.moveTo(cx,cy);
+    var px = cx, py = cy;
+    for(var k=0;k<5;k++){
+      a += (Math.random()-0.5)*0.7;
+      px += Math.cos(a)*len/5; py += Math.sin(a)*len/5;
+      x.lineTo(px,py);
+    }
+    x.strokeStyle = "rgba(200,225,255,"+(0.25+Math.random()*0.4).toFixed(2)+")";
+    x.lineWidth = (k%2===0) ? 1.6 : 0.9;
+    x.stroke();
+  }
+  x.strokeStyle = "rgba(255,255,255,.35)"; x.lineWidth = 2.2;
+  x.beginPath(); x.arc(cx, cy, Math.min(r.width,r.height)*0.16, 0, 7); x.stroke();
+  c.classList.add("on");
+  $("app").classList.add("shake");
+  setTimeout(function(){ $("app").classList.remove("shake"); }, 520);
+  setTimeout(function(){ c.classList.remove("on"); }, 2800);
+}
+
+function coinRain(n){
+  var old = $("coinLayer"); if(old) old.parentNode.removeChild(old);
+  var box = document.createElement("div");
+  box.id = "coinLayer";
+  var glyphs = ["💰","💵","¥"];
+  for(var i=0;i<n;i++){
+    var sp = document.createElement("div");
+    sp.className = "coin";
+    sp.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+    sp.style.left = (Math.random()*98).toFixed(1)+"%";
+    sp.style.animationDuration = (1.1+Math.random()*1.4).toFixed(2)+"s";
+    sp.style.animationDelay = (Math.random()*0.7).toFixed(2)+"s";
+    sp.style.fontSize = (16+Math.random()*16).toFixed(0)+"px";
+    box.appendChild(sp);
+  }
+  document.body.appendChild(box);
+  SFX.coin();
+  setTimeout(function(){ if(box.parentNode) box.parentNode.removeChild(box); }, 3400);
+}
+
+/* ============ 事件绑定 ============ */
+function bind(){
+  $("start").addEventListener("click", function(){
+    ac(); SFX.click();
+    if(!localStorage.getItem("jlm_pro")){
+      localStorage.setItem("jlm_pro", "1");
+      STORY.play(PROLOGUE, function(){ beginRound(); BGM.start(); }, "calm");
+      return;
+    }
+    beginRound(); BGM.start();
+  });
+  function beginRound(){
+    newGame();
+    $("menu").classList.add("off");
+    $("over").classList.remove("on");
+    $("loanModal").classList.remove("on");
+    $("news").textContent = "开局 100 万 · 先点「买入」全押";
+    resize();
+  }
+
+  $("story").addEventListener("click", function(){ STORY.next(); });
+  $("storySkip").addEventListener("click", function(e){ e.stopPropagation(); STORY.end(); });
+  $("bgmBtn").addEventListener("click", function(e){ e.stopPropagation(); SFX.click(); BGM.toggle(); });
+
+  $("btnBuy").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return; ac();
+    if(S.paused){ flashNews("先点「继续」"); return; }
+    if(S.pos){ flashNews("已经在场内了，想加就点「押更大」"); return; }
+    if(S.cash < 10000){ flashNews("手上没钱了，去借？"); return; }
+    openPos();
+    flashNews("全押买入 " + money(S.pos.margin) + " · 倍数 ×" + S.pos.lev);
+  });
+  $("btnSell").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return; ac();
+    if(S.paused){ flashNews("先点「继续」"); return; }
+    if(!S.pos){ flashNews("空着手，没什么可卖"); return; }
+    sellAll();
+  });
+  $("btnPause").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return; ac(); togglePause();
+  });
+  $("btnRepay").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return; ac();
+    if(S.paused){ flashNews("先点「继续」"); return; }
+    repayDebt();
+  });
+  $("pResume").addEventListener("click", function(){ togglePause(false); SFX.click(); });
+  $("pSettle").addEventListener("click", function(){
+    togglePause(false); SFX.click(); settle("settle");
+  });
+  $("btnLev").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return;
+    ac();
+    if(S.paused){ flashNews("先点「继续」"); return; }
+    if(S.forcedActive){ flashNews("正在被催债，先卖出还钱！"); return; }
+    changeLev();
+  });
+  $("btnAdd").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return; ac();
+    if(S.paused){ flashNews("先点「继续」"); return; }
+    addMargin();
+  });
+  $("btnLoan").addEventListener("click", function(){
+    if(!S || S.phase!=="play") return; ac(); openLoan();
+  });
+
+  $("lmCancel").addEventListener("click", function(){
+    $("loanModal").classList.remove("on");
+    $("lmConfirm").style.display="none";
+  });
+  $("lmOk").addEventListener("click", function(){
+    if($("lmConfirm").style.display !== "block"){
+      $("lmConfirm").style.display = "block";
+      SFX.knock();
+      return;
+    }
+    $("lmConfirm").style.display="none";
+    doBorrow();
+  });
+  [].forEach.call($("lmAmounts").children, function(b){
+    b.addEventListener("click", function(){
+      loanAmt = parseInt(b.dataset.a,10);
+      renderLoan(); SFX.click();
+    });
+  });
+
+  $("keepPlay").addEventListener("click", function(){
+    if(!S || Date.now() - (S.overAt||0) < 300) return;
+    $("over").classList.remove("on");
+    S.phase = "play"; S.overAt = 0; S.paused = false; S.forcedActive = false;
+    S.stayPlay = true;
+    flashNews("钱够了，但你没打算停手。");
+    SFX.click();
+    BGM.start();
+  });
+
+  $("again").addEventListener("click", function(){
+    if(S && S.overAt && Date.now() - S.overAt < 800) return;   // 防止上一次点击“穿透”到这里
+    $("over").classList.remove("on");
+    ["s1","s7","s8"].forEach(function(k){ $(k).classList.remove("got"); });
+    newGame();
+    $("news").textContent = "再来一局，这次你会走吗？";
+    SFX.click();
+  });
+}
+
+/* 调试钩子（不影响玩法） */
+window.__JLM = { S: function(){ return S; }, finishGame: finishGame, newGame: newGame, BGM: BGM, STORY: STORY };
+
+/* ============ 启动 ============ */
+resize();
+bind();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
