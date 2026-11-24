@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0a1a26" />
+<meta name="theme-color" content="#0a1a26" />`r`n<meta name="mobile-web-app-capable" content="yes" />`r`n<meta name="apple-mobile-web-app-capable" content="yes" />`r`n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>指数回声 Echo of Exponential</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #071018;
     font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: #eaf6ff; }
-  #game { position: fixed; inset: 0; display: block; touch-action: none; }
+  #game { position: absolute; left: 0; top: 0; display: block; touch-action: none; }
   .hidden { display: none !important; }
 
   /* ---------- 开始界面 ---------- */
@@ -34,7 +34,7 @@
   .menu-foot b { color: #cfe6f4; font-weight: 600; }
 
   /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  #hud { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
   .panel { border-radius: 14px; padding: 12px 14px; border: 1px solid rgba(127,231,255,.2);
     background: linear-gradient(160deg, rgba(10,26,38,.82), rgba(6,14,22,.76)); backdrop-filter: blur(6px); }
 
@@ -113,7 +113,7 @@
     background: rgba(6,16,24,.78); border: 1px solid rgba(127,231,255,.22); }
 
   /* 触屏按钮 */
-  #touch { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+  #touch { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
   .tbtn { position: absolute; pointer-events: auto; display: flex; align-items: center; justify-content: center;
     font-size: 13px; font-weight: 700; color: #eaf6ff; border-radius: 999px; user-select: none;
     border: 1px solid rgba(127,231,255,.34); background: rgba(10,26,38,.62); backdrop-filter: blur(4px); }
@@ -180,6 +180,69 @@
   body.mobile #topMid { bottom: 96px; }
   body.mobile #hint { bottom: auto; top: 46%; left: 50%; right: auto; transform: translate(-50%, -50%); max-width: 74vw; text-align: center; }
 
+
+  /* ============ 手机横屏 ============ */
+  #stage { position: fixed; left: 0; top: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden; background: #08131f; }
+  #stage canvas#game { position: absolute; left: 0; top: 0; display: block; }
+  #rotwrap { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; will-change: transform; }
+  #gamebox { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; }
+  #game { position: absolute; left: 0; top: 0; z-index: 1; display: block; touch-action: none; }
+  #rotateTip { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; background: radial-gradient(circle at 50% 35%, #17324a, #060f18 75%); z-index: 9999; text-align: center; padding: 24px; }
+  /* 提示层只在 body.mobile.tip 时出现（默认竖屏自动旋转，不打扰） */
+  body.mobile:not(.rot) #rotateTip { display: none; }
+  body.mobile.tip:not(.force) #rotateTip { display: flex; }
+  #rotateTip .rt-icon { font-size: 54px; animation: rtspin 2.2s ease-in-out infinite; }
+  @keyframes rtspin { 0%, 60% { transform: rotate(0deg); } 80%, 100% { transform: rotate(90deg); } }
+  #rotateTip .rt-title { font-size: 24px; font-weight: 800; letter-spacing: .1em; color: #fff; }
+  #rotateTip .rt-sub { font-size: 13px; color: #93b8d1; line-height: 1.7; }
+  #rotateTip .rt-btns { display: flex; gap: 10px; margin-top: 8px; }
+  #rotateTip button { font: inherit; font-size: 14px; padding: 10px 18px; border-radius: 10px; cursor: pointer;
+    color: #08131f; background: linear-gradient(180deg, #ffd98a, #ffb347); border: 0; font-weight: 700; }
+  #rotateTip button.hidden { display: none; }
+
+  /* 横屏下的 HUD/按钮尺寸：按短边（高度）适配 */
+  body.mobile:not(.rot) #capBox { left: 10px; top: 8px; max-width: 30%; padding: 8px 10px; }
+  body.mobile:not(.rot) #goalBox { left: 34%; right: 34%; top: 8px; width: auto; padding: 7px 12px; }
+  body.mobile:not(.rot) #goalBox #goalText { font-size: 12.5px; margin: 2px 0 4px; }
+  body.mobile:not(.rot) #btnPause { top: 8px; right: 10px; width: 52px; height: 34px; font-size: 12px; }
+  body.mobile:not(.rot) #topMid { bottom: auto; top: 74px; left: 50%; }
+  body.mobile:not(.rot) #bossBar { top: 108px; width: 46%; }
+  body.mobile:not(.rot) #vitality { left: 10px; bottom: 8px; width: 26%; padding: 7px 10px; }
+  body.mobile:not(.rot) #vitality .v-row { display: none; }
+  body.mobile:not(.rot) #multBox { right: 10px; bottom: 8px; width: 26%; padding: 7px 10px; }
+  body.mobile:not(.rot) #hint { top: 46%; bottom: auto; max-width: 44%; }
+  body.mobile:not(.rot) .tbtn.big { width: 84px; height: 84px; right: 14px; bottom: 74px; font-size: 15px; }
+  body.mobile:not(.rot) #btnJump { right: 108px; bottom: 128px; }
+  body.mobile:not(.rot) #btnSlam { right: 108px; bottom: 56px; }
+  body.mobile:not(.rot) #btnGlide { right: 16px; bottom: 18px; }
+  body.mobile:not(.rot) #btnSonar { left: 12px; bottom: 96px; }
+  body.mobile:not(.rot) #btnView { left: 84px; bottom: 60px; }
+
+  /* 触屏按钮：横屏贴屏幕下缘；竖屏也贴下缘但按短边缩小，避免遮挡视野 */
+  @media (orientation: landscape) {
+    body.mobile .tbtn.big { width: 84px; height: 84px; right: 14px; bottom: 18px; font-size: 15px; }
+    body.mobile #btnJump { right: 108px; bottom: 66px; }
+    body.mobile #btnSlam { right: 108px; bottom: 18px; }
+    body.mobile #btnGlide { right: 14px; bottom: 108px; }
+    body.mobile #btnSonar { left: 12px; bottom: 18px; }
+    body.mobile #btnView { left: 84px; bottom: 18px; }
+    body.mobile .tbtn.plus { right: 12px; bottom: 200px; }
+    body.mobile .tbtn.minus { right: 12px; bottom: 152px; }
+  }
+  @media (orientation: portrait) {
+    body.mobile .tbtn.big { width: 74px; height: 74px; right: 12px; bottom: 132px; font-size: 14px; }
+    body.mobile #btnJump { right: 94px; bottom: 176px; }
+    body.mobile #btnSlam { right: 94px; bottom: 116px; }
+    body.mobile #btnGlide { right: 12px; bottom: 74px; }
+    body.mobile #btnSonar { left: 10px; bottom: 132px; }
+    body.mobile #btnView { left: 78px; bottom: 92px; }
+    body.mobile .tbtn.plus { right: 10px; bottom: 236px; }
+    body.mobile .tbtn.minus { right: 10px; bottom: 192px; }
+  }  body.mobile:not(.rot) .tbtn.small { width: 56px; height: 56px; font-size: 11.5px; }
+  body.mobile:not(.rot) .tbtn.plus { top: auto; bottom: 214px; right: 14px; width: 42px; height: 42px; }
+  body.mobile:not(.rot) .tbtn.minus { top: auto; bottom: 168px; right: 14px; width: 42px; height: 42px; }
+  body.mobile #keybar { display: none; }
   /* 暂停 */
   #pause { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
     background: rgba(3,8,12,.68); backdrop-filter: blur(3px); }
@@ -193,11 +256,99 @@
   .pbtn.primary { grid-column: span 2; border-color: rgba(255,190,107,.62); background: rgba(48,32,14,.8); }
   .keys { margin-top: 16px; font-size: 12px; color: #7f9cb0; line-height: 2; text-align: left; }
   .keys b { color: #dbeefb; font-weight: 600; }
+
+  /* 手机端按方向分别排布 HUD，保证不互相重叠 */
+  @media (orientation: landscape) {
+    body.mobile #keybar { display: none; }
+    body.mobile #topMid { top: 6px; bottom: auto; left: 50%; }
+    body.mobile #goalBox { left: auto; right: 10px; top: 8px; width: 34%; }
+    body.mobile #capBox { max-width: 30%; }
+    body.mobile #hint { top: 52%; bottom: auto; max-width: 46%; }
+    body.mobile #vitality { left: 10px; bottom: 8px; width: 30%; }
+    body.mobile #multBox { right: 10px; bottom: 8px; width: 30%; }
+  }
+  @media (orientation: portrait) {
+    body.mobile #capBox { left: 8px; top: 8px; max-width: calc(100% - 70px); }
+    body.mobile #goalBox { left: 8px; right: 8px; top: 118px; }
+    body.mobile #btnPause { top: 8px; right: 8px; }
+    body.mobile #topMid { bottom: 210px; top: auto; }
+    body.mobile #hint { top: 34%; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); max-width: 86%; }
+    body.mobile #vitality { left: 8px; bottom: 8px; width: 46%; }
+    body.mobile #multBox { right: 8px; bottom: 8px; width: 46%; }
+  }
+
+  /* 触屏布局（手机）：不依赖方向，按钮按屏幕短边缩放，互不重叠 */
+  body.mobile #keybar { display: none; }
+  body.mobile #capBox { left: 8px; top: 8px; max-width: 28%; padding: 6px 9px; }
+  body.mobile #capBox .cap-lore { display: none; }
+  body.mobile #goalBox { left: 34%; right: 34%; top: 8px; padding: 6px 10px; }
+  body.mobile #goalBox #goalText { font-size: 12px; margin: 2px 0 4px; }
+  body.mobile #btnPause { top: 8px; right: 50%; margin-right: -22px; width: 44px; height: 28px; font-size: 11px; }
+  body.mobile #capBox { padding-right: 8px; }
+  body.mobile #capBox { padding-top: 6px; }
+  body.mobile #topMid { top: auto; bottom: 44px; left: 50%; }
+  body.mobile #topMid #fps { display: none; }
+  body.mobile #hint { top: 52%; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); max-width: 46%; font-size: 11.5px; padding: 6px 9px; }
+  body.mobile #vitality { left: 8px; bottom: 8px; width: 26%; padding: 6px 8px; }
+  body.mobile #vitality .v-row { display: none; }
+  body.mobile #vitality #vitalityLabel, body.mobile #vitality .pct { font-size: 10px; }
+  body.mobile #multBox { right: 8px; bottom: 8px; width: 26%; padding: 6px 8px; }
+  body.mobile #multBox #dmgOut, body.mobile #multBox #sonarState { font-size: 10px; }
+  body.mobile #multBox #multVal { font-size: 15px; }
+  body.mobile #touch .tbtn.big { width: 70px; height: 70px; right: 10px; bottom: 96px; font-size: 13px; }
+  body.mobile #touch #btnJump { right: 86px; bottom: 118px; }
+  body.mobile #touch #btnSlam { right: 86px; bottom: 62px; }
+  body.mobile #touch #btnGlide { right: 10px; bottom: 176px; }
+  body.mobile #touch #btnSonar { left: 9px; bottom: 62px; }
+  body.mobile #touch #btnView { left: 72px; bottom: 96px; }
+  body.mobile #touch .tbtn.small { width: 52px; height: 52px; font-size: 11px; }
+  body.mobile #touch .tbtn.plus, body.mobile #touch .tbtn.minus { width: 40px; height: 40px; right: 10px; top: auto; font-size: 17px; }
+  body.mobile #touch .tbtn.plus { bottom: 232px; }
+  body.mobile #touch .tbtn.minus { bottom: 188px; }
+  body.mobile #bossBar { top: 62px; width: 46%; }  body.mobile #btnPause { top: 6px; right: 8px; left: auto; margin-right: 0; width: 46px; height: 30px; font-size: 11px; }
+  body.mobile #capBox { padding-right: 62px; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 
+<div id="stage"><div id="rotwrap"><div id="gamebox">
+<div id="rotateTip">
+  <div class="rt-icon">📱⟳</div>
+  <div class="rt-title">请横屏游玩</div>
+  <div class="rt-sub">把手机转成横向，视野更宽、按钮更好按</div>
+  <div class="rt-btns">
+    <button id="btnForceLand">强制横屏继续</button>
+    <button id="btnRotateBack" class="hidden">返回竖屏</button>
+  </div>
+</div>
+
+</div></div>
+
+<div id="menu">
+  <div class="menu-box">
+    <div class="kicker">ECHO OF EXPONENTIAL</div>
+    <h1>指数<em>回声</em></h1>
+    <div class="sub">你在城市里喊一声。<br />声音每涨一个数量级，世界就碎开一层。</div>
+    <div class="modes">
+      <div class="mode" id="btnNormal">
+        <b>正常模式 · 回响之眼</b>
+        <span>视野一览无余，看得见街道、地标和远处的巨物。</span>
+        <ul><li>不显示声纳光环</li><li>适合第一次玩</li></ul>
+      </div>
+      <div class="mode" id="btnBlind">
+        <b>盲人模式 · 声纳</b>
+        <span>视野只剩眼前一小圈，其余全黑；靠声纳“听”出世界。</span>
+        <ul><li>声压越高，声纳范围越大（有上限）</li><li>能看到正常视野以外的建筑与巨物</li></ul>
+      </div>
+    </div>
+    <div class="menu-foot">
+      PC 与手机功能完全一致：<b>WASD / 左侧摇杆</b> 移动 ·
+      <b>鼠标 / 右侧拖动</b> 转视角 · <b>滚轮 / ＋－</b> 伤害 ×2 ÷2
+    </div>
+  </div>
+</div>
+</div></div></div>
 <div id="hud" class="hidden">
   <div id="capBox" class="panel">
     <div class="cap-label" id="capLabel">伤害上限</div>
@@ -261,7 +412,6 @@
     
   </div>
 </div>
-
 <div id="touch" class="hidden">
   <div class="tbtn big" id="btnShout">吼</div>
   <div class="tbtn small" id="btnJump">跳跃</div>
@@ -288,30 +438,6 @@
       <b>WASD</b> 移动 · <b>Shift</b> 冲刺 · <b>空格</b> 跳跃 · <b>Q</b> 快速下坠 · <b>E / 右键</b> 滑翔<br />
       <b>左键</b> 蓄力，松开吼出去 · <b>滚轮 / 括号键</b> 伤害 ×2 ÷2<br />
       <b>F</b> 声纳 · <b>V</b> 视角 · <b>Esc</b> 暂停 · <b>O / P</b> 保存 / 读取
-    </div>
-  </div>
-</div>
-
-<div id="menu">
-  <div class="menu-box">
-    <div class="kicker">ECHO OF EXPONENTIAL</div>
-    <h1>指数<em>回声</em></h1>
-    <div class="sub">你在城市里喊一声。<br />声音每涨一个数量级，世界就碎开一层。</div>
-    <div class="modes">
-      <div class="mode" id="btnNormal">
-        <b>正常模式 · 回响之眼</b>
-        <span>视野一览无余，看得见街道、地标和远处的巨物。</span>
-        <ul><li>不显示声纳光环</li><li>适合第一次玩</li></ul>
-      </div>
-      <div class="mode" id="btnBlind">
-        <b>盲人模式 · 声纳</b>
-        <span>视野只剩眼前一小圈，其余全黑；靠声纳“听”出世界。</span>
-        <ul><li>声压越高，声纳范围越大（有上限）</li><li>能看到正常视野以外的建筑与巨物</li></ul>
-      </div>
-    </div>
-    <div class="menu-foot">
-      PC 与手机功能完全一致：<b>WASD / 左侧摇杆</b> 移动 ·
-      <b>鼠标 / 右侧拖动</b> 转视角 · <b>滚轮 / ＋－</b> 伤害 ×2 ÷2
     </div>
   </div>
 </div>
@@ -1401,13 +1527,6 @@ class Hud {
 
 // ===== main.js =====
 // 《指数回声 Echo of Exponential》—— 可玩最小原型（纯 Canvas 2D 软 3D，无依赖）
-
-
-
-
-
-
-
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 820;
 // 档位名字直接取自配置，避免与其它模块重复声明
 const TIER_NAMES = TIERS.map((t) => t.name);
@@ -1439,12 +1558,23 @@ let lastMs = performance.now(), fpsAcc = 0, fpsN = 0;
 function boot() {
   cv = $('game');
   ctx = cv.getContext('2d');
-  if (IS_MOBILE) document.body.classList.add('mobile');
+  if (IS_MOBILE) {
+    document.body.classList.add('mobile');
+    // 允许时锁定横屏（Android Chrome 有效；iOS 不支持则回落到旋转布局）
+    try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (err) {}
+  }
   hud = new Hud();
   resize();
   window.addEventListener('resize', resize);
-  $('btnNormal').addEventListener('click', () => start('normal'));
-  $('btnBlind').addEventListener('click', () => start('blind'));
+  window.addEventListener('orientationchange', () => setTimeout(resize, 180));
+  if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', () => setTimeout(resize, 180));
+  const goFull = () => {
+    if (!document.fullscreenElement) { try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); } catch (err) {} }
+    try { if (IS_MOBILE && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (err) {}
+    setTimeout(resize, 300);
+  };
+  $('btnNormal').addEventListener('click', () => { goFull(); start('normal'); });
+  $('btnBlind').addEventListener('click', () => { goFull(); start('blind'); });
   $('btnResume').addEventListener('click', () => togglePause());
   $('btnSave').addEventListener('click', () => saveGame());
   $('btnLoad').addEventListener('click', () => loadGame());
@@ -1458,9 +1588,52 @@ function boot() {
   requestAnimationFrame(frame);
 }
 
+// ---------------- 手机横屏适配 ----------------
+// 不再旋转画面：渲染尺寸永远等于真实视口，按当前宽高比铺满。
+// 竖屏进入时由提示层引导横过手机，不做任何变形。
+let FORCE_LAND = false;
+const _stage = () => document.getElementById('stage');
+const _rot = () => document.getElementById('rotwrap');
+const _box = () => document.getElementById('gamebox');
+
+function isPortrait() {
+  return window.innerHeight > window.innerWidth * 1.02;
+}
+
+// 手机横屏时真正用于渲染的尺寸（逻辑像素）
+function viewSize() {
+  return { W: window.innerWidth, H: window.innerHeight };
+}
+
+function layoutStage() {
+  const st = _stage(), rw = _rot(), bx = _box();
+  if (!st || !rw || !bx) return;
+  // 不再做任何旋转：手机请把设备横过来，画面按真实视口比例铺满
+  document.body.classList.remove('rot');
+  const W = window.innerWidth, H = window.innerHeight;
+  st.style.cssText = '';
+  st.style.position = 'fixed';
+  st.style.left = '0px'; st.style.top = '0px';
+  st.style.width = W + 'px'; st.style.height = H + 'px';
+  st.style.overflow = 'hidden';
+  rw.style.cssText = '';
+  rw.style.position = 'absolute';
+  rw.style.left = '0px'; rw.style.top = '0px';
+  rw.style.width = W + 'px'; rw.style.height = H + 'px';
+  bx.style.cssText = '';
+  bx.style.position = 'absolute';
+  bx.style.left = '0px'; bx.style.top = '0px';
+  bx.style.width = W + 'px'; bx.style.height = H + 'px';
+}
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  const W = window.innerWidth, H = window.innerHeight;
+  layoutStage();
+  const vs = viewSize();
+  const W = vs.W, H = vs.H;
+  // HUD / 触屏层与画布同尺寸（显式设定，避免百分比在旋转坐标系里解析出多余尺寸）
+  const hudEl = document.getElementById('hud'), touchEl = document.getElementById('touch');
+  if (hudEl) { hudEl.style.width = W + 'px'; hudEl.style.height = H + 'px'; }
+  if (touchEl) { touchEl.style.width = W + 'px'; touchEl.style.height = H + 'px'; }
   cv.width = Math.floor(W * DPR);
   cv.height = Math.floor(H * DPR);
   cv.style.width = W + 'px';
@@ -2088,7 +2261,8 @@ function drawHurtOverlay(W, H) {
 }
 
 function render(dt) {
-  const W = window.innerWidth, H = window.innerHeight;
+  const _vs = viewSize();
+  const W = _vs.W, H = _vs.H;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const blind = G.mode === 'blind' && G.screen !== 'menu';
   const sh = Math.min(G.shake, 9);
@@ -2106,6 +2280,7 @@ function render(dt) {
     if (G.screen === 'menu') cam.y = 14;
   }
   cam.fov = CFG.fov;
+  cam.aspect = W / Math.max(1, H);
   cam.setup(W, H);
 
   const sky = ctx.createLinearGradient(0, 0, 0, H);
