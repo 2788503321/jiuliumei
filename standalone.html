@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0a1a26" />`r`n<meta name="mobile-web-app-capable" content="yes" />`r`n<meta name="apple-mobile-web-app-capable" content="yes" />`r`n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#0a1a26" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>指数回声 Echo of Exponential</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -121,6 +124,8 @@
   .tbtn.big { width: 96px; height: 96px; right: 20px; bottom: 168px; font-size: 15px;
     border-color: rgba(255,190,107,.6); background: rgba(38,26,12,.56); }
   .tbtn.small { width: 62px; height: 62px; font-size: 12px; }
+  .tbtn.dash { border-color: rgba(127,231,255,.6); }
+  .tbtn.dash.down { background: rgba(127,231,255,.35); border-color: rgba(127,231,255,.9); }
   #btnJump { right: 132px; bottom: 214px; }
   #btnSlam { right: 132px; bottom: 128px; }
   #btnGlide { right: 20px; bottom: 76px; }
@@ -138,7 +143,8 @@
   body:not(.mobile) #touch #btnSlam,
   body:not(.mobile) #touch #btnGlide,
   body:not(.mobile) #touch #btnSonar,
-  body:not(.mobile) #touch #btnView { display: none; }
+  body:not(.mobile) #touch #btnView,
+  body:not(.mobile) #touch #btnDash { display: none; }
   body.mobile .tbtn.small { display: flex; }
   body:not(.mobile) .tbtn.plus { top: auto; bottom: 150px; right: 24px; width: 44px; height: 44px; opacity: .82; }
   body:not(.mobile) .tbtn.minus { top: auto; bottom: 100px; right: 24px; width: 44px; height: 44px; opacity: .82; }
@@ -299,6 +305,7 @@
   body.mobile #touch #btnJump { right: 86px; bottom: 118px; }
   body.mobile #touch #btnSlam { right: 86px; bottom: 62px; }
   body.mobile #touch #btnGlide { right: 10px; bottom: 176px; }
+  body.mobile #touch #btnDash { right: 86px; bottom: 172px; }
   body.mobile #touch #btnSonar { left: 9px; bottom: 62px; }
   body.mobile #touch #btnView { left: 72px; bottom: 96px; }
   body.mobile #touch .tbtn.small { width: 52px; height: 52px; font-size: 11px; }
@@ -389,6 +396,7 @@
 </div>
 <div id="touch" class="hidden">
   <div class="tbtn big" id="btnShout">吼</div>
+  <div class="tbtn small dash" id="btnDash">冲刺</div>
   <div class="tbtn small" id="btnJump">跳跃</div>
   <div class="tbtn small" id="btnSlam">下坠</div>
   <div class="tbtn small" id="btnGlide">滑翔</div>
@@ -526,7 +534,7 @@ const CFG = {
   debrisLifeMin: 15, debrisLifeMax: 30, debrisMax: 260,
   enemyWorldMax: 20, bossWorldMax: 2,
   enemySpawnMin: 80, enemySpawnMax: 180, bossSpawnMin: 600, bossSpawnMax: 900,
-  gruntDamage: 3, gruntInterval: 2.6, bossDamage: 8, bossInterval: 3.2, damageCap: 12,
+  gruntDamage: 3, gruntInterval: 5.2, bossDamage: 8, bossInterval: 6.4, damageCap: 12,
   playerHealth: 100, regenDelay: 4, regenRate: 10,
 };
 
@@ -743,7 +751,7 @@ function landmarkParts(id, L, bx, bz, ox, oz) {
     out.push(P(0, 0, 0, 18, 54, 18, '#efe6d2', 'taper'), P(0, 54, 0, 4, 4, 4, '#e8dcc0'));
     for (let i = 0; i < 4; i++) out.push(P(0, 56, 0, 4, 26, 2, '#f2ead8', 'blade'));
   } else if (id === 'bell') {
-    out.push(P(0, 0, 0, 22, 66, 22, '#bfe4ff', 'glassbox'), P(0, 66, 0, 10, 18, 10, '#9fd8ff'));
+    out.push(P(0, 0, 0, 22, 66, 22, '#dfe3ea', 'taper'), P(0, 66, 0, 10, 18, 10, '#c8ced9'));
   } else if (id === 'dam') {
     out.push(P(0, 0, 0, 150, 60, 26, '#cfd6de'), P(0, 0, 34, 150, 7, 68, '#8fd0f0'), P(0, 60, 0, 156, 8, 30, '#e2e8ef'));
   } else if (id === 'bridge') {
@@ -1546,6 +1554,7 @@ const enemies = new Enemies();
 let hud = null, cv = null, ctx = null, DPR = 1;
 const KEYS = new Set();
 const inp = { moveX: 0, moveY: 0, lookX: 0, lookY: 0, sprint: false };
+let touchDash = false; // 手机端「冲刺」按钮按住时移动加速
 const ptr = { down: false, lx: 0, ly: 0 };
 let stick = { on: false, id: null, sx: 0, sy: 0, x: 0, y: 0 };
 let lookT = { on: false, id: null, lx: 0, ly: 0 };
@@ -1749,6 +1758,7 @@ function bindButtons() {
     n.addEventListener('mouseup', (e) => { e.preventDefault(); u(e); });
     n.addEventListener('click', (e) => e.preventDefault());
   };
+  on('btnDash', () => { touchDash = true; }, () => { touchDash = false; });
   on('btnShout', doShoutStart, doShoutEnd);
   on('btnJump', doJump);
   on('btnSlam', doSlam);
@@ -1927,7 +1937,7 @@ function spawnDebris(e) {
       vx: Math.cos(a) * (8 + Math.random() * 22), vy: 8 + Math.random() * 20, vz: Math.sin(a) * (8 + Math.random() * 22),
       rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 8,
       life: CFG.debrisLifeMin + Math.random() * (CFG.debrisLifeMax - CFG.debrisLifeMin), age: 0,
-      color: e.type === 'glass' ? '#c8ecff' : (e.landmark ? '#b8c6e8' : '#cfd8e4'),
+      color: e.landmark ? '#b8c6e8' : '#cfd8e4',
     });
   }
 }
@@ -2144,7 +2154,7 @@ function step(dt, rawDt) {
       inp.moveY += -dy * k;
     }
   }
-  inp.sprint = KEYS.has('ShiftLeft') || KEYS.has('ShiftRight');
+  inp.sprint = KEYS.has('ShiftLeft') || KEYS.has('ShiftRight') || touchDash;
 
   const r = player.update(dt, inp, nowSec, world);
   player.resolveEnemies(enemies.list, player.pos.x, player.pos.z);
@@ -2215,7 +2225,7 @@ function step(dt, rawDt) {
 }
 // ---------------- 渲染 ----------------
 const COLORS = {
-  glass: '#bfe9ff', concrete: '#e4e9f0', stone: '#c8ced9', wood: '#efe2c8',
+  concrete: '#e4e9f0', stone: '#c8ced9', wood: '#efe2c8',
   brick: '#e9b7a0', park: '#dbe3ec', landmark: '#b9cdf2',
 };
 
@@ -2546,7 +2556,7 @@ function drawBuilding(e, dist, blind) {
   const cols = Math.max(1, Math.round(Math.max(e.w, e.d) / VOXEL));
   const s = (e.seed >>> 0);
   const winCols = ['#ffe9b0', '#fff3cf', '#ffd98a', '#cfe9ff', '#bfe4ff'];
-  const darkWin = e.type === 'glass' ? '#4f86ac' : '#344e66';
+  const darkWin = '#344e66';
   // 远处看不清砖缝时退回整面填充，保证性能
   const tiny = dist > 520;
   for (const fi of faces) {
@@ -2591,7 +2601,7 @@ function drawBuilding(e, dist, blind) {
         const g3 = mixPt(a.b, a.t, b.b, b.t, clamp(cu0 + (cu1 - cu0) * gapU, 0, 1), v1 - (v1 - v0) * gapU);
         const n = ((s >>> ((r * 7 + c * 3) % 29)) ^ (r * 131 + c * 17)) & 1023;
         const isWin = r > 0 && r < rows - 1;
-        const lit = n < (e.type === 'glass' ? 330 : 380);
+        const lit = n < 380;
         ctx.beginPath();
         ctx.moveTo(g0.x, g0.y); ctx.lineTo(g1.x, g1.y); ctx.lineTo(g2.x, g2.y); ctx.lineTo(g3.x, g3.y);
         ctx.closePath();
@@ -2680,14 +2690,13 @@ function drawWindows(a, b, e, k, fog) {
   const cols = Math.max(3, Math.min(8, Math.round((e.w + e.d) * 0.5 / 3)));
   const rows = Math.max(3, Math.min(18, Math.round(e.h / 3.6)));
   const s = (e.seed >>> 0);
-  const glass = e.type === 'glass';
   const light = Math.max(0.15, 1 - (fog || 0) * 1.4);
   const wu = 0.58 / cols, wv = 0.55 / rows;
   for (let r = 0; r < rows; r++) {
     const v0 = 0.07 + (r / rows) * 0.88;
     for (let c = 0; c < cols; c++) {
       const n = ((s >>> ((r * 7 + c * 3) % 29)) ^ (r * 131 + c * 17)) & 1023;
-      const lit = n < (glass ? 260 : 400);
+      const lit = n < 400;
       const u0 = 0.09 + (c / cols) * 0.84;
       const p0 = mixPt(a.b, a.t, b.b, b.t, u0, v0);
       const p1 = mixPt(a.b, a.t, b.b, b.t, u0 + wu, v0);
@@ -2701,7 +2710,7 @@ function drawWindows(a, b, e, k, fog) {
         ctx.fillStyle = WARM_WINDOWS[n % WARM_WINDOWS.length];
         ctx.globalAlpha = 0.55 * light + 0.25;
       } else {
-        ctx.fillStyle = glass ? 'rgba(120,180,220,0.45)' : 'rgba(56,92,124,0.42)';
+        ctx.fillStyle = 'rgba(56,92,124,0.42)';
         ctx.globalAlpha = light;
       }
       ctx.fill();
