@@ -1,0 +1,3424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a1a26" />
+<title>指数回声 Echo of Exponential</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #071018;
+    font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: #eaf6ff; }
+  #game { position: fixed; inset: 0; display: block; touch-action: none; }
+  .hidden { display: none !important; }
+
+  /* ---------- 开始界面 ---------- */
+  #menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 38%, rgba(8,20,30,0.35), rgba(4,10,16,0.86) 62%); z-index: 40; }
+  .menu-box { width: min(680px, 92vw); text-align: center; padding: 24px; }
+  .kicker { letter-spacing: .42em; font-size: 12px; color: #ffb347; text-transform: uppercase; }
+  .menu-box h1 { margin: 10px 0 4px; font-size: clamp(34px, 7vw, 66px); letter-spacing: .04em;
+    font-weight: 800; line-height: 1.05;
+    text-shadow: 0 0 24px rgba(255,179,71,.25), 0 0 60px rgba(127,231,255,.16); }
+  .menu-box h1 em { font-style: normal; color: #ffbe6b; }
+  .sub { color: #a9c6d8; font-size: 14px; line-height: 1.7; margin: 12px auto 22px; max-width: 560px; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .modes { grid-template-columns: 1fr; } }
+  .mode { text-align: left; cursor: pointer; border-radius: 16px; padding: 16px 18px; border: 1px solid rgba(127,231,255,.28);
+    background: linear-gradient(160deg, rgba(20,44,62,.82), rgba(8,20,30,.82)); transition: transform .15s, border-color .15s, box-shadow .15s; }
+  .mode:hover { transform: translateY(-2px); border-color: rgba(255,190,107,.7); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .mode b { display: block; font-size: 19px; margin-bottom: 6px; }
+  .mode span { display: block; font-size: 13px; color: #a9c6d8; line-height: 1.65; }
+  .mode ul { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: #8fb2c6; line-height: 1.75; }
+  .menu-foot { margin-top: 18px; font-size: 12px; color: #7f9cb0; line-height: 1.9; }
+  .menu-foot b { color: #cfe6f4; font-weight: 600; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  .panel { border-radius: 14px; padding: 12px 14px; border: 1px solid rgba(127,231,255,.2);
+    background: linear-gradient(160deg, rgba(10,26,38,.82), rgba(6,14,22,.76)); backdrop-filter: blur(6px); }
+
+  /* 左上：伤害讲解 */
+  #capBox { position: absolute; left: 16px; top: 16px; min-width: 268px; max-width: 44vw; }
+  #capBox.reveal { animation: pop .35s ease-out; }
+  @keyframes pop { 0% { transform: scale(.94); opacity: .55; } 100% { transform: scale(1); opacity: 1; } }
+  .cap-label { font-size: 11px; letter-spacing: .16em; color: #ffb347; }
+  .cap-line { display: flex; align-items: baseline; gap: 2px; margin: 2px 0 2px; white-space: nowrap; }
+  .cap-line .x { font-size: clamp(16px, 2.2vw, 22px); color: #dff3ff; }
+  .cap-line .coef { font-size: clamp(30px, 4.6vw, 48px); font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .cap-line .exp { font-size: clamp(24px, 3.6vw, 38px); font-weight: 800; color: #9fe4ff; display: inline-flex; align-items: flex-start; }
+  .cap-line .exp sup { font-size: .6em; line-height: 1; margin-top: -.12em; }
+  .cap-lore { font-size: 12px; color: #b7d3e4; line-height: 1.5; }
+
+  /* 右上：当前目标 */
+  #goalBox { position: absolute; right: 16px; top: 16px; width: min(320px, 42vw); }
+  .goal-label { font-size: 11px; letter-spacing: .16em; color: #7fe7ff; }
+  #goalText { font-size: 15px; font-weight: 700; line-height: 1.45; margin: 4px 0 8px; }
+  .bar { height: 6px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #7fe7ff, #ffbe6b); transition: width .2s; }
+  #goalNum { font-size: 11px; color: #9fc0d3; margin-top: 5px; }
+
+  /* 左下：生命 / 喘气 */
+  #vitality { position: absolute; left: 16px; bottom: 52px; width: min(300px, 46vw); }
+  .v-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .v-name { font-size: 11px; letter-spacing: .14em; color: #9fc0d3; width: 46px; flex: none; }
+  .vbar { flex: 1; height: 8px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .vbar .fill { display: block; height: 100%; width: 100%; border-radius: 6px; background: linear-gradient(90deg, #48e6b0, #9fe4ff); transition: width .15s; }
+  .vbar .fill.low { background: linear-gradient(90deg, #ff7a7a, #ffb86b); }
+  .vbar .fill.regen { background: linear-gradient(90deg, #7dffd8, #9fe4ff); box-shadow: 0 0 10px rgba(125,255,216,.7); }
+  #pips { display: flex; gap: 4px; margin-top: 8px; }
+  #pips i { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,.14); }
+  #pips i.on { background: linear-gradient(90deg, #ffbe6b, #ff8a5b); box-shadow: 0 0 10px rgba(255,190,107,.65); }
+  #tierName { font-size: 11.5px; color: #cfe6f4; margin-top: 6px; }
+
+  /* 右下：倍率 */
+  #multBox { position: absolute; right: 16px; bottom: 52px; width: min(268px, 44vw); text-align: right; }
+  .mult-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  #multVal { font-size: 26px; font-weight: 800; line-height: 1; }
+  .mult-cap { font-size: 11px; color: #9fc0d3; letter-spacing: .1em; }
+  .mult-track { height: 6px; border-radius: 6px; background: rgba(255,255,255,.12); margin: 8px 0 6px; overflow: hidden; }
+  .mult-track > i { display: block; height: 100%; width: 50%; border-radius: 6px; background: linear-gradient(90deg, #7fa6ff, #ffbe6b); transition: width .18s; }
+  #dmgOut { font-size: 12px; color: #ffd9a8; }
+  #sonarState { font-size: 11px; color: #8fd8ff; margin-top: 4px; }
+
+  /* 中上：模式 / 计数 */
+  #topMid { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .tag { font-size: 11.5px; letter-spacing: .14em; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid rgba(127,231,255,.32); background: rgba(8,20,30,.7); color: #bfeaff; }
+  .tag.blind { border-color: rgba(255,190,107,.45); color: #ffcf94; }
+  #waveCount { font-size: 11.5px; color: #9fc0d3; }
+  #fps { font-size: 10.5px; color: #5f7f93; }
+
+  /* 顶部中间偏上：Boss 条 */
+  #bossBar { position: absolute; left: 50%; top: 74px; transform: translateX(-50%); width: min(560px, 74vw); text-align: center; }
+  #bossName { font-size: 13px; font-weight: 700; letter-spacing: .05em; color: #ffd0d0; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+  #bossBar .bar { margin: 6px 0 3px; height: 8px; }
+  #bossBar .bar > i { background: linear-gradient(90deg, #ff5c5c, #ff9d6b); }
+  #bossHp { font-size: 11px; color: #ffc7c7; }
+
+  /* 小地图 */
+  #minimap { position: absolute; right: 16px; top: 156px; border-radius: 12px; border: 1px solid rgba(127,231,255,.22); background: rgba(6,14,22,.5); }
+
+  /* 提示 */
+    /* 底部按键说明条 */
+  #keybar { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; flex-wrap: nowrap;
+    justify-content: center; gap: 4px; max-width: none; width: max-content; pointer-events: none; z-index: 12; }
+  #keybar .k { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #cfe6f5;
+    background: rgba(6,14,24,.62); border: 1px solid rgba(127,196,255,.26); border-radius: 7px; padding: 3px 8px;
+    backdrop-filter: blur(4px); white-space: nowrap; }
+  #keybar .k b { font-weight: 700; color: #fff; background: rgba(170,215,255,.18); border-radius: 4px; padding: 0 5px; line-height: 16px; }
+  body.mobile #keybar { display: none; }
+#hint { position: absolute; left: 50%; bottom: 116px; transform: translateX(-50%); max-width: min(660px, 88vw);
+    text-align: center; font-size: 13.5px; line-height: 1.6; color: #eaf6ff; padding: 9px 16px; border-radius: 12px;
+    background: rgba(6,16,24,.78); border: 1px solid rgba(127,231,255,.22); }
+
+  /* 触屏按钮 */
+  #touch { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+  .tbtn { position: absolute; pointer-events: auto; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #eaf6ff; border-radius: 999px; user-select: none;
+    border: 1px solid rgba(127,231,255,.34); background: rgba(10,26,38,.62); backdrop-filter: blur(4px); }
+  .tbtn.down { background: rgba(255,190,107,.42); border-color: rgba(255,190,107,.85); transform: scale(.96); }
+  .tbtn.big { width: 96px; height: 96px; right: 20px; bottom: 168px; font-size: 15px;
+    border-color: rgba(255,190,107,.6); background: rgba(38,26,12,.56); }
+  .tbtn.small { width: 62px; height: 62px; font-size: 12px; }
+  #btnJump { right: 132px; bottom: 214px; }
+  #btnSlam { right: 132px; bottom: 128px; }
+  #btnGlide { right: 20px; bottom: 76px; }
+  #btnSonar { left: 20px; bottom: 190px; }
+  #btnView { left: 96px; bottom: 150px; }
+  .tbtn.plus, .tbtn.minus { width: 52px; height: 52px; right: 16px; top: 42%; font-size: 20px; }
+  #btnMultDown { top: calc(42% + 62px); }
+  #btnPause { position: absolute; right: 16px; top: 16px; pointer-events: auto; width: 44px; height: 44px;
+    border-radius: 12px; border: 1px solid rgba(127,231,255,.3); background: rgba(10,26,38,.6); color: #cfe6f4;
+    font-size: 13px; font-weight: 700; cursor: pointer; }
+
+  /* 桌面端：触屏按钮只留一排紧凑的倍率＋－，其余隐藏；小屏再整体禁用 */
+  body:not(.mobile) #touch .tbtn.big,
+  body:not(.mobile) #touch #btnJump,
+  body:not(.mobile) #touch #btnSlam,
+  body:not(.mobile) #touch #btnGlide,
+  body:not(.mobile) #touch #btnSonar,
+  body:not(.mobile) #touch #btnView { display: none; }
+  body.mobile .tbtn.small { display: flex; }
+  body:not(.mobile) .tbtn.plus { top: auto; bottom: 150px; right: 24px; width: 44px; height: 44px; opacity: .82; }
+  body:not(.mobile) .tbtn.minus { top: auto; bottom: 100px; right: 24px; width: 44px; height: 44px; opacity: .82; }
+  body:not(.mobile) #btnPause { display: none; }
+  @media (max-width: 900px) {
+    #capBox { min-width: 0; max-width: 58vw; }
+    #goalBox { width: 40vw; }
+    #minimap { display: none; }
+  }
+
+  /* 手机端：重排 HUD，避免顶部三块叠在一起、按钮压住提示条 */
+  body.mobile #capBox { left: 8px; top: 8px; max-width: calc(100vw - 16px); padding: 8px 10px; }
+  body.mobile .cap-label { font-size: 10px; }
+  body.mobile .cap-lore { font-size: 11px; }
+  body.mobile #goalBox { left: 8px; right: 8px; top: 104px; width: auto; padding: 8px 10px; }
+  body.mobile #goalBox #goalText { font-size: 13px; margin: 2px 0 5px; }
+  body.mobile #topMid { top: auto; bottom: 96px; left: 50%; }
+  body.mobile #topMid #fps { display: none; }
+  body.mobile #waveCount { font-size: 10.5px; }
+  body.mobile #bossBar { top: 186px; width: calc(100vw - 16px); }
+  body.mobile #vitality { left: 8px; bottom: 8px; width: 44vw; padding: 8px 10px; }
+  body.mobile #multBox { right: 8px; bottom: 8px; width: 40vw; padding: 8px 10px; }
+  body.mobile #btnPause { z-index: 14; }
+  body.mobile #multVal { font-size: 18px; }
+  body.mobile #dmgOut, body.mobile #sonarState { font-size: 10.5px; }
+  body.mobile #hint { bottom: 150px; max-width: 62vw; font-size: 12px; padding: 7px 10px; }
+  body.mobile .tbtn.big { width: 76px; height: 76px; right: 12px; bottom: 176px; font-size: 14px; }
+  body.mobile #btnJump { right: 96px; bottom: 226px; }
+  body.mobile #btnSlam { right: 96px; bottom: 152px; }
+  body.mobile #btnGlide { right: 14px; bottom: 108px; }
+  body.mobile #btnSonar { left: 10px; bottom: 348px; }
+  body.mobile #btnView { left: 84px; bottom: 132px; }
+  body.mobile .tbtn.small { width: 54px; height: 54px; font-size: 11px; }
+  body.mobile .tbtn.plus, body.mobile .tbtn.minus { width: 44px; height: 44px; right: 10px; }
+  body.mobile .tbtn.plus { top: auto; bottom: 300px; }
+  body.mobile .tbtn.minus { top: auto; bottom: 248px; }
+  body.mobile #btnPause { top: 104px; bottom: auto; left: auto; right: 8px; width: 44px; height: 32px; font-size: 11px; }
+  body.mobile #goalBox { padding-right: 60px; }
+  body.mobile #topMid { bottom: 96px; }
+  body.mobile #hint { bottom: auto; top: 46%; left: 50%; right: auto; transform: translate(-50%, -50%); max-width: 74vw; text-align: center; }
+
+  /* 暂停 */
+  #pause { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+    background: rgba(3,8,12,.68); backdrop-filter: blur(3px); }
+  .pause-box { width: min(420px, 90vw); text-align: center; }
+  .pause-box h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: .1em; }
+  .pause-box p { color: #9fc0d3; font-size: 12.5px; line-height: 1.8; margin: 0 0 16px; }
+  .pbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pbtn { padding: 12px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 700; color: #eaf6ff;
+    border: 1px solid rgba(127,231,255,.3); background: rgba(12,30,44,.85); }
+  .pbtn:hover { border-color: rgba(255,190,107,.7); }
+  .pbtn.primary { grid-column: span 2; border-color: rgba(255,190,107,.62); background: rgba(48,32,14,.8); }
+  .keys { margin-top: 16px; font-size: 12px; color: #7f9cb0; line-height: 2; text-align: left; }
+  .keys b { color: #dbeefb; font-weight: 600; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="capBox" class="panel">
+    <div class="cap-label" id="capLabel">伤害上限</div>
+    <div class="cap-line">
+      <span class="x">×</span><span class="coef" id="capCoef">1.00</span>
+      <span class="x">×</span><span class="exp" id="capExp">10^3</span>
+    </div>
+    <div class="cap-lore" id="capLore">≈ 一辆卡车倒车时撞上水泥墩</div>
+  </div>
+
+  <div id="goalBox" class="panel">
+    <div class="goal-label">CURRENT TARGET · 当前目标</div>
+    <div id="goalText">—</div>
+    <div class="bar"><i id="goalFill"></i></div>
+    <div id="goalNum">0 / 6</div>
+  </div>
+
+  <div id="topMid">
+    <div class="tag normal" id="modeTag">正常模式</div>
+    <div id="waveCount">震碎 0 栋建筑 · 击破 0 只巨物</div>
+    <div id="fps">— FPS</div>
+  </div>
+
+  <div id="bossBar" class="hidden">
+    <div id="bossName">—</div>
+    <div class="bar"><i id="bossFill"></i></div>
+    <div id="bossHp">—</div>
+  </div>
+
+  <canvas id="minimap"></canvas>
+
+  <div id="vitality" class="panel">
+    <div class="v-row"><span class="v-name">VITALITY</span><span class="vbar"><i class="fill" id="hpFill"></i></span></div>
+    <div id="pips"></div>
+    <div id="tierName">按住左键 / 空格 蓄力发声</div>
+  </div>
+
+  <div id="multBox" class="panel">
+    <div class="mult-row">
+      <span class="mult-cap">伤害倍率</span>
+      <span id="multVal">×1</span>
+    </div>
+    <div class="mult-track"><i id="multFill"></i></div>
+    <div id="dmgOut">伤害 1,000</div>
+    <div id="sonarState">声纳就绪 · F</div>
+  </div>
+
+  <div id="hint" class="hidden">提示</div>
+
+  <div id="keybar">
+    <span class="k"><b>WASD</b>移动</span>
+    <span class="k"><b>Shift</b>冲刺</span>
+    <span class="k"><b>空格</b>跳跃</span>
+    <span class="k"><b>右键</b>滑翔</span>
+    <span class="k"><b>Q</b>下坠</span>
+    <span class="k"><b>左键</b>蓄力吼</span>
+    <span class="k"><b>滚轮</b>×2 ÷2</span>
+    <span class="k"><b>F</b>声纳</span>
+    <span class="k"><b>M</b>音乐</span>
+    
+    
+  </div>
+</div>
+
+<div id="touch" class="hidden">
+  <div class="tbtn big" id="btnShout">吼</div>
+  <div class="tbtn small" id="btnJump">跳跃</div>
+  <div class="tbtn small" id="btnSlam">下坠</div>
+  <div class="tbtn small" id="btnGlide">滑翔</div>
+  <div class="tbtn small" id="btnSonar">声纳</div>
+  <div class="tbtn small" id="btnView">视角</div>
+  <div class="tbtn plus" id="btnMultUp">＋</div>
+  <div class="tbtn minus" id="btnMultDown">－</div>
+  <button id="btnPause">暂停</button>
+</div>
+
+<div id="pause" class="hidden">
+  <div class="pause-box panel">
+    <h2>暂停</h2>
+    <p>世界无限大，走到哪加载到哪；<br />被你震塌的建筑永远不会自己修好。</p>
+    <div class="pbtns">
+      <button class="pbtn primary" id="btnResume">继续</button>
+      <button class="pbtn" id="btnSave">保存进度</button>
+      <button class="pbtn" id="btnLoad">读取进度</button>
+      <button class="pbtn" id="btnFull" style="grid-column: span 2;">全屏切换</button>
+    </div>
+    <div class="keys">
+      <b>WASD</b> 移动 · <b>Shift</b> 冲刺 · <b>空格</b> 跳跃 · <b>Q</b> 快速下坠 · <b>E / 右键</b> 滑翔<br />
+      <b>左键</b> 蓄力，松开吼出去 · <b>滚轮 / 括号键</b> 伤害 ×2 ÷2<br />
+      <b>F</b> 声纳 · <b>V</b> 视角 · <b>Esc</b> 暂停 · <b>O / P</b> 保存 / 读取
+    </div>
+  </div>
+</div>
+
+<div id="menu">
+  <div class="menu-box">
+    <div class="kicker">ECHO OF EXPONENTIAL</div>
+    <h1>指数<em>回声</em></h1>
+    <div class="sub">你在城市里喊一声。<br />声音每涨一个数量级，世界就碎开一层。</div>
+    <div class="modes">
+      <div class="mode" id="btnNormal">
+        <b>正常模式 · 回响之眼</b>
+        <span>视野一览无余，看得见街道、地标和远处的巨物。</span>
+        <ul><li>不显示声纳光环</li><li>适合第一次玩</li></ul>
+      </div>
+      <div class="mode" id="btnBlind">
+        <b>盲人模式 · 声纳</b>
+        <span>视野只剩眼前一小圈，其余全黑；靠声纳“听”出世界。</span>
+        <ul><li>声压越高，声纳范围越大（有上限）</li><li>能看到正常视野以外的建筑与巨物</li></ul>
+      </div>
+    </div>
+    <div class="menu-foot">
+      PC 与手机功能完全一致：<b>WASD / 左侧摇杆</b> 移动 ·
+      <b>鼠标 / 右侧拖动</b> 转视角 · <b>滚轮 / ＋－</b> 伤害 ×2 ÷2
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+"use strict";
+// ===== util.js =====
+// 通用工具：确定性随机、哈希、科学计数法、换算文案
+function mulberry32(a) {
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hash2(x, y) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (rng, a, b) => a + (b - a) * rng();
+const pick = (rng, arr) => arr[Math.min(arr.length - 1, Math.floor(rng() * arr.length))];
+
+// 数值 -> { coef, exp }，用于 "x1.78x10^44"
+function toSci(v) {
+  if (!isFinite(v)) return { coef: 9.99, exp: 300 };
+  if (v === 0) return { coef: 0, exp: 0 };
+  const a = Math.abs(v);
+  let exp = Math.floor(Math.log10(a));
+  let coef = Math.round((a / Math.pow(10, exp)) * 100) / 100;
+  if (coef >= 10) { coef = 1; exp += 1; }
+  return { coef: coef * Math.sign(v), exp };
+}
+
+// 短科学计数法：1234 -> 1,234；123456 -> 1.23x10^5
+function shortSci(v) {
+  if (!isFinite(v)) return 'inf';
+  if (v <= 0) return '0';
+  const exp = Math.floor(Math.log10(v));
+  if (exp < 4) return Math.round(v).toLocaleString('en-US');
+  const sup = String(exp).split('').map((d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]).join('');
+  return (v / Math.pow(10, exp)).toFixed(2) + '×10' + sup;
+}
+
+// 按指数挑换算文案
+function pickLore(table, exp, rng = Math.random) {
+  let idx = 0;
+  for (let i = 0; i < table.length; i++) if (table[i].min <= exp) idx = i;
+  if (idx === 0) return table[0].text;
+  const jitter = Math.floor(rng() * 3) - 1;
+  return table[clamp(idx + jitter, 0, table.length - 1)].text;
+}
+
+// 二维线段与轴对齐矩形是否相交（Liang-Barsky）
+function segHitsBox(x0, z0, x1, z1, bx0, bz0, bx1, bz1) {
+  let tmin = 0, tmax = 1;
+  const dx = x1 - x0, dz = z1 - z0;
+  const p = [-dx, dx, -dz, dz];
+  const q = [x0 - bx0, bx1 - x0, z0 - bz0, bz1 - z0];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) { if (q[i] < 0) return false; }
+    else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) { if (t > tmax) return false; if (t > tmin) tmin = t; }
+      else { if (t < tmin) return false; if (t < tmax) tmax = t; }
+    }
+  }
+  return true;
+}
+
+// ===== config.js =====
+// 《指数回声 Echo of Exponential》—— 全局配置
+const CFG = {
+  seed: 20261124, chunkSize: 256, viewRadius: 1, eyeHeight: 1.65, fov: 62,
+  waveBaseSpeed: 110, waveSpeedPerTier: 55,
+  sonarCooldown: 6, sonarDuration: 2.0,
+  sonarRangeByTier: [0, 15, 40, 90, 160, 240], sonarRangeCap: 240, normalViewRadius: 40,
+  gravity: 26, runSpeed: 9, sprintSpeed: 16,
+  jumpHeightByTier: [0, 5, 15, 40, 120, 300], glideFallSpeed: 3.2, slamSpeed: 60,
+  multMin: 1 / 16, multMax: 16, multDefault: 1,
+  capStart: 1e6, capGrowth: 10, goalWaves: 6,
+  debrisLifeMin: 15, debrisLifeMax: 30, debrisMax: 260,
+  enemyWorldMax: 20, bossWorldMax: 2,
+  enemySpawnMin: 80, enemySpawnMax: 180, bossSpawnMin: 600, bossSpawnMax: 900,
+  gruntDamage: 3, gruntInterval: 2.6, bossDamage: 8, bossInterval: 3.2, damageCap: 12,
+  playerHealth: 100, regenDelay: 4, regenRate: 10,
+};
+
+// 蓄力档位：声压级 = 10^(tier+1)，蓄力越久档位越高
+const TIERS = [
+  { name: '低语', minHold: 0.0, cost: 0, cooldown: 0.2, dmgScale: 1, pen: 0.15 },
+  { name: '哼声', minHold: 0.15, cost: 5, cooldown: 0.3, dmgScale: 12, pen: 0.25 },
+  { name: '大喊', minHold: 0.45, cost: 15, cooldown: 0.6, dmgScale: 60, pen: 0.7 },
+  { name: '嘶吼', minHold: 0.8, cost: 30, cooldown: 1.2, dmgScale: 1400, pen: 0.6 },
+  { name: '长啸', minHold: 1.3, cost: 50, cooldown: 2.5, dmgScale: 16000, pen: 0.78 },
+  { name: '终极一吼', minHold: 2.0, cost: 100, cooldown: 8, dmgScale: 180000, pen: 0.92 },
+];
+
+// 换算文案库：按指数区间挑一句“这是什么量级”
+const LORE_TABLE = [
+  { min: 0, text: '≈ 一只蚊子在你耳边嘀咕了十秒' },
+  { min: 1, text: '≈ 关上一扇吱呀作响的旧木门' },
+  { min: 2, text: '≈ 一辆卡车倒车时撞上水泥墩' },
+  { min: 3, text: '≈ 一片小瀑布整夜不停地拍打岩石' },
+  { min: 4, text: '≈ 一场摇滚演唱会压过全场合唱的轰鸣' },
+  { min: 5, text: '≈ 一次喷气式飞机起飞的怒吼，而且没有耳机' },
+  { min: 6, text: '≈ 一次小型爆破拆除，老楼安静地倒下' },
+  { min: 7, text: '≈ 一次 7 级地震在暗色岩层里翻滚的能量' },
+  { min: 8, text: '≈ 一次大型火山喷发的能量，这次没有岩浆' },
+  { min: 9, text: '≈ 一场超级飓风整个生命周期释放的风能' },
+  { min: 10, text: '≈ 一颗直径 100 米的小行星撞向海洋' },
+  { min: 11, text: '≈ 太阳一秒钟向外辐射的全部能量' },
+  { min: 12, text: '≈ 太阳核心一秒钟加热出的全部光子' },
+  { min: 13, text: '≈ 一整座油田被同时点燃的规模' },
+  { min: 14, text: '≈ 一颗类地行星整体蒸发所需的能量' },
+  { min: 15, text: '≈ 一次伽马射线暴在千分之一秒内释放的能量' },
+  { min: 20, text: '≈ 一颗中子星一秒钟自转汇聚出的脉冲' },
+  { min: 25, text: '≈ 一颗直径 1000 公里的小行星以 20 公里/秒撞来的动能' },
+  { min: 30, text: '≈ 一颗白矮星的整体结合能' },
+  { min: 35, text: '≈ 一颗 2.23×10^35 吨的小行星以 20 公里/秒飞行的动能' },
+  { min: 40, text: '≈ 把一颗恒星轰成尘埃所需要的冲击波' },
+  { min: 44, text: '≈ 整个银河系在百年内倾泻的所有光能' },
+  { min: 50, text: '≈ 宇宙大爆炸第一秒余温里翻滚的全部声浪' },
+  { min: 60, text: '≈ 你随口喊出的那句「安静」，被宇宙原样退回' },
+];
+
+// 特殊地标（外形做类比化处理，规避版权）
+const LANDMARKS = {
+  eiffel:      { name: '埃菲尔铁塔', h: 180, w: 60,  d: 60,  max: 1 },
+  pisa:        { name: '比萨斜塔',   h: 90,  w: 22,  d: 22,  max: 1 },
+  liberty:     { name: '自由女神像', h: 120, w: 30,  d: 30,  max: 1 },
+  wall:        { name: '长城',       h: 14,  w: 120, d: 14,  max: 2 },
+  garden:      { name: '空中花园',   h: 60,  w: 50,  d: 50,  max: 1 },
+  manor:       { name: '大庄园',     h: 30,  w: 80,  d: 60,  max: 2 },
+  windmill:    { name: '巨型风车',   h: 70,  w: 30,  d: 30,  max: 3 },
+  bell:        { name: '玻璃钟楼',   h: 85,  w: 26,  d: 26,  max: 1 },
+  dam:         { name: '巨型水坝',   h: 100, w: 160, d: 30,  max: 1 },
+  bridge:      { name: '跨海大桥',   h: 55,  w: 180, d: 20,  max: 2 },
+  observatory: { name: '古城天文台', h: 40,  w: 50,  d: 50,  max: 1 },
+  pyramid:     { name: '倒悬金字塔', h: 70,  w: 50,  d: 50,  max: 1 },
+};
+
+// 普通小怪：简单、数量有上限、随进度解锁
+const GRUNTS = [
+  { id: 'patrol',  name: '巡逻兵',     size: 3,   hp: 3e7,   limit: 10, unlock: 0 },
+  { id: 'scout',   name: '飞行侦查机', size: 2.5, hp: 4e7,   limit: 6,  unlock: 1 },
+  { id: 'drone',   name: '无人机',     size: 3,   hp: 8e7,   limit: 4,  unlock: 2 },
+  { id: 'balloon', name: '浮空气球怪', size: 6,   hp: 1.5e8, limit: 3,  unlock: 2 },
+];
+
+// Boss：随进度一个个刷，体型越大越靠后；有 IP 影子的放后期
+const BOSSES = [
+  { id: 'stone',     name: '巨型石像',     size: 40,  hp: 1e9,   limit: 1, unlock: 3 },
+  { id: 'centipede', name: '百足巨虫长老', size: 150, hp: 4e9,   limit: 1, unlock: 4 },
+  { id: 'worm',      name: '钻地蠕虫',     size: 120, hp: 2e10,  limit: 1, unlock: 5 },
+  { id: 'titan',     name: '无脸巨影',     size: 200, hp: 8e10,  limit: 1, unlock: 6 },
+  { id: 'mec',       name: '装甲巨械',     size: 160, hp: 4e11,  limit: 1, unlock: 7 },
+  { id: 'saucer',    name: '碟形无人机',   size: 120, hp: 2e12,  limit: 1, unlock: 8 },
+  { id: 'fortress',  name: '空中要塞',     size: 260, hp: 1e13,  limit: 1, unlock: 9 },
+  { id: 'star',      name: '恒星回声',     size: 400, hp: 1e14,  limit: 1, unlock: 10 },
+];
+
+// 世界目标：每打满一次就完成目标，伤害上限 ×10
+const GOAL_TEMPLATES = [
+  (n) => `震碎眼前的玻璃与广告牌（第 ${n} 次）`,
+  (n) => `让整条街的窗户依次爆裂（第 ${n} 次）`,
+  (n) => `震塌停车场和玻璃幕墙（第 ${n} 次）`,
+  (n) => `震出峡谷与山体滑坡（第 ${n} 次）`,
+  (n) => `让天空中的巨物听见你（第 ${n} 次）`,
+  (n) => `把整个世界吼成一圈声浪（第 ${n} 次）`,
+];
+
+// ===== render.js =====
+// 纯 Canvas 2D 软 3D 渲染工具：相机与投影
+const clampf = (v, a, b) => (v < a ? a : v > b ? b : v);
+
+class Camera {
+  constructor() {
+    this.x = 0; this.y = 1.65; this.z = 0;
+    this.yaw = 0; this.pitch = 0;
+    this.fov = 62;
+    this.f = 600; this.cx = 0; this.cy = 0;
+    this.W = 1; this.H = 1;
+    this.near = 0.2;
+    this._o = { x: 0, y: 0, z: 0 };
+  }
+  setup(W, H) {
+    this.W = W; this.H = H;
+    this.cx = W * 0.5; this.cy = H * 0.5;
+    this.f = (H * 0.5) / Math.tan((this.fov * 0.5 * Math.PI) / 180);
+  }
+  // 视图基向量（每次投影现算，避免状态不同步）
+  basis() {
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+    const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+    // 前向（yaw=0 时朝 -z），含俯仰
+    const fx = -sy * cp, fy = sp, fz = -cy * cp;
+    const rx = cy, ry = 0, rz = -sy;
+    // up = right x forward
+    const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+    return { fx, fy, fz, rx, ry, rz, ux, uy, uz };
+  }
+  cam(wx, wy, wz) {
+    const b = this.basis();
+    const dx = wx - this.x, dy = wy - this.y, dz = wz - this.z;
+    const o = this._o;
+    o.x = dx * b.rx + dy * b.ry + dz * b.rz;
+    o.y = dx * b.ux + dy * b.uy + dz * b.uz;
+    o.z = dx * b.fx + dy * b.fy + dz * b.fz;
+    return o;
+  }
+  proj(p) {
+    if (p.z <= this.near) return null;
+    const s = this.f / p.z;
+    return { x: this.cx + p.x * s, y: this.cy - p.y * s, s, z: p.z };
+  }
+  screen(wx, wy, wz) { return this.proj(this.cam(wx, wy, wz)); }
+}
+
+function hex2rgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function shade(hex, k, a) {
+  const c = hex2rgb(hex);
+  const r = Math.min(255, Math.max(0, (c[0] * k) | 0));
+  const g = Math.min(255, Math.max(0, (c[1] * k) | 0));
+  const b = Math.min(255, Math.max(0, (c[2] * k) | 0));
+  if (a === undefined || a >= 1) return 'rgb(' + r + ',' + g + ',' + b + ')';
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a.toFixed(3) + ')';
+}
+function mix(hex1, hex2, t) {
+  const a = hex2rgb(hex1), b = hex2rgb(hex2);
+  return 'rgb(' + (((a[0] + (b[0] - a[0]) * t) | 0)) + ',' + (((a[1] + (b[1] - a[1]) * t) | 0)) + ',' + (((a[2] + (b[2] - a[2]) * t) | 0)) + ')';
+}
+function shadeMix(hex1, hex2, t, k) {
+  const a = hex2rgb(hex1), b = hex2rgb(hex2);
+  const r = Math.min(255, Math.max(0, ((a[0] + (b[0] - a[0]) * t) * k) | 0));
+  const g = Math.min(255, Math.max(0, ((a[1] + (b[1] - a[1]) * t) * k) | 0));
+  const bl = Math.min(255, Math.max(0, ((a[2] + (b[2] - a[2]) * t) * k) | 0));
+  return 'rgb(' + r + ',' + g + ',' + bl + ')';
+}
+function isOccluded(cam, px, py, pz, boxes) {
+  if (!boxes || !boxes.length) return false;
+  const steps = 5;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / (steps + 1);
+    const x = cam.x + (px - cam.x) * t;
+    const y = cam.y + (py - cam.y) * t;
+    const z = cam.z + (pz - cam.z) * t;
+    for (let k = 0; k < boxes.length; k++) {
+      const b = boxes[k];
+      if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && y < b.h) return true;
+    }
+  }
+  return false;
+}
+
+// ===== world.js =====
+// 无限世界 + 区块系统
+//  - 区块确定性生成，走到哪生成到哪（同种子同区块永远一样）
+//  - 两层：细节层（玩家附近，建筑实体/地标/动画）与摘要层（只记 建筑ID -> 剩余耐久）
+//  - 建筑损坏永久不修复；离屏释放细节，回到原处按损坏清单原样重建
+//  - 存档只存差异（损坏清单 + 玩家位置/伤害上限）
+
+
+const TYPES = {
+  office:   { h: [22, 80], w: [9, 17],  hp: 900,  tone: '#c8d4e0' },
+  concrete: { h: [16, 72], w: [8, 16],  hp: 2600, tone: '#e2e8f0' },
+  stone:    { h: [10, 34], w: [10, 22], hp: 5200, tone: '#c9ced8' },
+  wood:     { h: [5, 12],  w: [6, 11],  hp: 1500, tone: '#efe2c8' },
+  brick:    { h: [4, 9],   w: [5, 10],  hp: 1800, tone: '#e8b39a' },
+  park:     { h: [10, 30], w: [16, 24], hp: 2200, tone: '#dfe5ec' },
+};
+
+const TYPE_KEYS = ['office', 'office', 'concrete', 'concrete', 'concrete', 'stone', 'wood', 'brick', 'park'];
+const LANDMARK_IDS = Object.keys(LANDMARKS);
+const LANDMARK_SLOTS = 5; // 每个区块最多 5 个地标候选位，按地形是否合适挑一个
+
+// 地标与建筑的“形状语言”（外形做了类比化处理，规避版权）
+function landmarkParts(id, L, bx, bz, ox, oz) {
+  const P = (dx, dy, dz, w, h, d, tone, k) => ({ x: bx + ox + dx, y: dy, z: bz + oz + dz, w: w, h: h, d: d, tone: tone, k: k || 'box' });
+  const out = [];
+  if (id === 'eiffel') {
+    out.push(P(0, 0, 0, 26, 26, 26, '#9fb6c9'), P(0, 26, 0, 16, 40, 16, '#a8bfd2'),
+      P(0, 66, 0, 9, 50, 9, '#b3c9db'), P(0, 116, 0, 4, 64, 4, '#bfd4e4', 'spire'));
+  } else if (id === 'pisa') {
+    out.push(P(0, 0, 0, 20, 18, 20, '#e8e2d2'), P(2.5, 18, 0, 15, 60, 15, '#f0e9d8'));
+  } else if (id === 'liberty') {
+    out.push(P(0, 0, 0, 20, 40, 20, '#c9cfd8'), P(0, 40, 0, 11, 50, 11, '#9fd8c8'),
+      P(0, 88, 0, 3, 30, 3, '#ffd9a0', 'spire'), P(0, 116, 0, 7, 7, 7, '#ffcf7a', 'orb'));
+  } else if (id === 'wall') {
+    for (let i = 0; i < 6; i++) out.push(P(-50 + i * 20, 0, 0, 19, i % 2 ? 9 : 13, 13, '#cbbfa8'));
+  } else if (id === 'garden') {
+    for (let i = 0; i < 4; i++) out.push(P(0, i * 15, 0, 46 - i * 9, 15, 46 - i * 9, i % 2 ? '#bfe6c3' : '#e8e0c8'));
+  } else if (id === 'manor') {
+    out.push(P(0, 0, 0, 70, 20, 50, '#e6d6bd'), P(0, 20, 0, 26, 12, 30, '#d8c39c'), P(0, 20, 0, 6, 20, 6, '#cbb488'));
+  } else if (id === 'windmill') {
+    out.push(P(0, 0, 0, 18, 54, 18, '#efe6d2', 'taper'), P(0, 54, 0, 4, 4, 4, '#e8dcc0'));
+    for (let i = 0; i < 4; i++) out.push(P(0, 56, 0, 4, 26, 2, '#f2ead8', 'blade'));
+  } else if (id === 'bell') {
+    out.push(P(0, 0, 0, 22, 66, 22, '#bfe4ff', 'glassbox'), P(0, 66, 0, 10, 18, 10, '#9fd8ff'));
+  } else if (id === 'dam') {
+    out.push(P(0, 0, 0, 150, 60, 26, '#cfd6de'), P(0, 0, 34, 150, 7, 68, '#8fd0f0'), P(0, 60, 0, 156, 8, 30, '#e2e8ef'));
+  } else if (id === 'bridge') {
+    out.push(P(0, 8, 0, 170, 9, 18, '#cbd3dc'), P(0, 0, 0, 170, 8, 70, '#8fd0f0'));
+    for (let i = -2; i <= 2; i++) out.push(P(i * 38, 17, 0, 5, 44, 5, '#b9c3ce'));
+  } else if (id === 'observatory') {
+    out.push(P(0, 0, 0, 44, 26, 44, '#e6e2d8'), P(0, 26, 0, 26, 12, 26, '#dfe9f2', 'dome'));
+  } else if (id === 'pyramid') {
+    out.push(P(0, 0, 0, 40, 14, 40, '#d8cba8'), P(0, 56, 0, 28, 14, 28, '#e2d6b4'), P(0, 70, 0, 14, 14, 14, '#d0c39c', 'spire'));
+  } else {
+    out.push(P(0, 0, 0, L.w * 0.6, L.h, L.d * 0.6, '#d9dfe6'));
+  }
+  return out;
+}
+
+class World {
+  constructor(seed) {
+    this.seed = seed;
+    this.chunks = new Map();
+    this.landmarkUsed = new Map();
+  }
+
+  key(cx, cz) { return cx + ',' + cz; }
+
+  // 区块数据：纯计算，绝不依赖遍历顺序
+  data(cx, cz) {
+    const rng = mulberry32((hash2(cx, cz) ^ this.seed) >>> 0);
+    const S = CFG.chunkSize;
+    // 每个区块至少一条纵街，另加一条横街与一条随机侧街，保证街道密度足够
+    const roads = [{ axis: 'z', at: S * (0.35 + 0.3 * rng()) }];
+    roads.push({ axis: 'z', at: S * (rng() < 0.5 ? 0.1 + 0.08 * rng() : 0.82 + 0.08 * rng()) });
+    if (rng() < 0.55) roads.push({ axis: 'x', at: S * (0.3 + 0.4 * rng()) });
+    const blds = [];
+    const blocks = 9 + Math.floor(rng() * 5);
+    for (let i = 0; i < blocks; i++) {
+      const bx = rnd(rng, 12, S - 12);
+      const bz = rnd(rng, 12, S - 12);
+      if (roads.some((r) => Math.abs((r.axis === 'z' ? bx : bz) - r.at) < 14)) continue;
+      const n = 4 + Math.floor(rng() * 5);
+      for (let j = 0; j < n; j++) {
+        if (blds.length >= 78) break;
+        const tk = pick(rng, TYPE_KEYS);
+        const T = TYPES[tk];
+        const w = rnd(rng, T.w[0], T.w[1]);
+        const d = rnd(rng, T.w[0], T.w[1]);
+        const h = rnd(rng, T.h[0], T.h[1]);
+        const x = bx + rnd(rng, -12, 12);
+        const z = bz + rnd(rng, -12, 12);
+        if (x < 9 || x > S - 9 || z < 9 || z > S - 9) continue;
+        if (blds.some((b) => Math.abs(b.x - x) < (b.w + w) / 2 + 1.2 && Math.abs(b.z - z) < (b.d + d) / 2 + 1.2)) continue;
+        blds.push({ id: blds.length, type: tk, x, z, w, d, h, hp: T.hp, maxHp: T.hp, landmark: null, name: '', tone: T.tone, seed: (rng() * 1e9) | 0 });
+      }
+    }
+
+    // 特殊地标：候选位与生成完全确定；这里挑“地形合适”的一个
+    const slots = [];
+    for (let s = 0; s < LANDMARK_SLOTS; s++) {
+      const id = LANDMARK_IDS[hash2(cx * 31 + s * 17 + 7, cz * 13 - s * 5 + 3) % LANDMARK_IDS.length];
+      const x = rnd(rng, 70, S - 70);
+      const z = rnd(rng, 70, S - 70);
+      slots.push({ id, x, z });
+    }
+    const fit = slots.find((sl) => {
+      const L = LANDMARKS[sl.id];
+      const hw = L.w * 0.5 + 6, hd = L.d * 0.5 + 6;
+      if (sl.x - hw < 2 || sl.x + hw > S - 2 || sl.z - hd < 2 || sl.z + hd > S - 2) return false;
+      if (roads.some((r) => (r.axis === 'z' ? Math.abs(sl.x - r.at) < hw + 6 : Math.abs(sl.z - r.at) < hd + 6))) return false;
+      return !blds.some((b) => Math.abs(b.x - sl.x) < hw + b.w * 0.5 && Math.abs(b.z - sl.z) < hd + b.d * 0.5);
+    });
+    if (fit) {
+      const L = LANDMARKS[fit.id];
+      const k = this.key(cx, cz) + ':' + fit.id;
+      const used = this.landmarkUsed.get(fit.id) || 0;
+      if (used < L.max) {
+        this.landmarkUsed.set(fit.id, used + 1);
+        const parts = landmarkParts(fit.id, L, fit.x, fit.z, 0, 0);
+        blds.push({
+          id: blds.length, type: 'landmark', x: fit.x, z: fit.z, w: L.w, d: L.d, h: L.h,
+          hp: L.h * 900, maxHp: L.h * 900, landmark: fit.id, name: L.name, tone: '#cfd8e6', seed: 777,
+          parts, stamp: k,
+        });
+      }
+    }
+
+    const skyline = [];
+    for (let i = 0; i < 14; i++) {
+      skyline.push({ x: rng() * S, z: rng() * S, w: rnd(rng, 10, 26), d: rnd(rng, 10, 26), h: rnd(rng, 70, 300), tone: rng() });
+    }
+    return { cx, cz, S, roads, blds, skyline };
+  }
+
+  get(cx, cz) {
+    const k = this.key(cx, cz);
+    let ch = this.chunks.get(k);
+    if (!ch) {
+      ch = { data: this.data(cx, cz), state: {}, detailed: false, detList: null };
+      this.chunks.set(k, ch);
+    }
+    return ch;
+  }
+
+  st(ch, b) {
+    let s = ch.state[b.id];
+    if (!s) { s = { hp: b.hp, destroyed: false }; ch.state[b.id] = s; }
+    return s;
+  }
+
+  enterDetail(ch) {
+    if (ch.detailed) return ch.detList;
+    const list = [];
+    const S = ch.data.S;
+    for (const b of ch.data.blds) {
+      const s = this.st(ch, b);
+      list.push({
+        kind: 'bld', b, state: s, id: b.id,
+        x: ch.data.cx * S + b.x, z: ch.data.cz * S + b.z,
+        h: b.h, w: b.w, d: b.d, type: b.type, tone: b.tone, landmark: b.landmark, name: b.name,
+        parts: b.parts ? b.parts.map((p) => ({ x: ch.data.cx * S + p.x, y: p.y, z: ch.data.cz * S + p.z, w: p.w, h: p.h, d: p.d, tone: p.tone, k: p.k })) : null,
+        crack: s.destroyed ? 1 : 1 - s.hp / b.maxHp,
+      });
+    }
+    ch.detList = list;
+    ch.detailed = true;
+    return list;
+  }
+
+  leaveDetail(ch) { ch.detailed = false; ch.detList = null; }
+
+  update(px, pz) {
+    const S = CFG.chunkSize;
+    const cx = Math.floor(px / S);
+    const cz = Math.floor(pz / S);
+    const r = CFG.viewRadius;
+    const want = new Set();
+    for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
+      want.add(this.key(cx + i, cz + j));
+      this.enterDetail(this.get(cx + i, cz + j));
+    }
+    for (const [k, ch] of this.chunks) if (!want.has(k) && ch.detailed) this.leaveDetail(ch);
+    this.cx = cx; this.cz = cz;
+  }
+
+  visible() {
+    const out = [];
+    for (const ch of this.chunks.values()) if (ch.detailed) for (const e of ch.detList) out.push(e);
+    return out;
+  }
+
+  near(x, z, r) {
+    const out = [];
+    for (const ch of this.chunks.values()) {
+      if (!ch.detailed) continue;
+      for (const e of ch.detList) {
+        if (e.state.destroyed) continue;
+        const dx = e.x - x, dz = e.z - z;
+        const m = r + Math.max(e.w, e.d) * 0.5;
+        if (dx * dx + dz * dz < m * m) out.push(e);
+      }
+    }
+    return out;
+  }
+
+  blockers(px, pz, r) {
+    const out = [];
+    for (const ch of this.chunks.values()) {
+      if (!ch.detailed) continue;
+      for (const e of ch.detList) {
+        const dx = e.x - px, dz = e.z - pz;
+        if (dx * dx + dz * dz > r * r) continue;
+        out.push({ x0: e.x - e.w * 0.5, x1: e.x + e.w * 0.5, z0: e.z - e.d * 0.5, z1: e.z + e.d * 0.5, h: e.h, destroyed: e.state.destroyed });
+      }
+    }
+    return out;
+  }
+
+  skyline(px, pz, r) {
+    const out = [];
+    for (const ch of this.chunks.values()) {
+      if (!ch.detailed) continue;
+      const S = ch.data.S;
+      for (const s of ch.data.skyline) {
+        const wx = ch.data.cx * S + s.x, wz = ch.data.cz * S + s.z;
+        if (Math.hypot(wx - px, wz - pz) > r) continue;
+        out.push({ x: wx, z: wz, w: s.w, d: s.d, h: s.h, tone: s.tone });
+      }
+    }
+    return out;
+  }
+
+  roads(px, pz, r) {
+    const out = [];
+    for (const ch of this.chunks.values()) {
+      if (!ch.detailed) continue;
+      const S = ch.data.S;
+      for (const rd of ch.data.roads) {
+        if (rd.axis === 'z') {
+          const x = ch.data.cx * S + rd.at;
+          if (Math.abs(x - px) < r) out.push({ axis: 'z', x, z0: ch.data.cz * S, z1: ch.data.cz * S + S });
+        } else {
+          const z = ch.data.cz * S + rd.at;
+          if (Math.abs(z - pz) < r) out.push({ axis: 'x', z, x0: ch.data.cx * S, x1: ch.data.cx * S + S });
+        }
+      }
+    }
+    return out;
+  }
+
+  damage(e, dmg) {
+    if (e.state.destroyed) return false;
+    e.state.hp -= dmg;
+    if (e.state.hp <= 0) {
+      e.state.hp = 0;
+      e.state.destroyed = true;
+      e.crack = 1;
+      return true;
+    }
+    e.crack = 1 - e.state.hp / e.b.maxHp;
+    return false;
+  }
+
+  serialize(player, G) {
+    const diffs = [];
+    for (const [k, ch] of this.chunks) {
+      const d = [];
+      for (const id in ch.state) {
+        const s = ch.state[id];
+        const b = ch.data.blds[id];
+        if (!b) continue;
+        if (s.destroyed || s.hp < b.maxHp) d.push([+id, Math.round(s.hp)]);
+      }
+      if (d.length) diffs.push([k, d]);
+    }
+    return JSON.stringify({
+      t: Date.now(),
+      p: [player.pos.x, player.pos.y, player.pos.z, player.yaw, player.pitch],
+      G: { cap: G.cap, mult: G.mult, goalIndex: G.goalIndex, goalHits: G.goalHits, killed: G.killed, destroyed: G.destroyed, mode: G.mode },
+      diffs,
+    });
+  }
+
+  deserialize(raw) {
+    const s = JSON.parse(raw);
+    this.chunks.clear();
+    this.landmarkUsed.clear();
+    for (const [k, d] of s.diffs) {
+      const parts = k.split(',');
+      const ch = this.get(+parts[0], +parts[1]);
+      for (const pair of d) {
+        ch.state[pair[0]] = pair[1] <= 0 ? { hp: 0, destroyed: true } : { hp: pair[1], destroyed: false };
+      }
+    }
+    return s;
+  }
+}
+
+// ===== player.js =====
+// 主角：移动、蓄力发声、蓄力跳跃、滑翔、快速下坠、生命/喘息值
+
+
+// 主角碰撞半径（米）：与建筑/地标做圆柱-AABB 分离，防止穿模
+const PR_R = 0.55;
+
+class Player {
+  constructor() {
+    this.pos = { x: 0, y: 0, z: 0 };
+    this.vel = { x: 0, y: 0, z: 0 };
+    this.yaw = 0.5;
+    this.pitch = -0.06;
+    this.onGround = true;
+    this.health = CFG.playerHealth;
+    this.lastHit = -99;
+    this.charging = false;
+    this.hold = 0;
+    this.tier = 0;
+    this.histTier = 1;
+    this.cooldown = 0;
+    this.gliding = false;
+    this.slamming = false;
+    this.walk = 0;
+    this.invul = 0;
+    this.bob = 0;
+    this.groundTop = 0;
+  }
+
+  tierForHold(t) {
+    let tier = 0;
+    for (let i = 0; i < TIERS.length; i++) if (t >= TIERS[i].minHold) tier = i;
+    return tier;
+  }
+
+  startCharge() {
+    if (this.cooldown > 0 || this.charging) return false;
+    this.charging = true;
+    this.hold = 0;
+    this.tier = 0;
+    return true;
+  }
+
+  // 敌人也当实心体：主角不能从怪身上穿过去
+  resolveEnemies(list, prevX, prevZ) {
+    const R = PR_R;
+    const p = this.pos;
+    for (const e of list) {
+      if (e.dead) continue;
+      const er = (e.kind === 'boss' ? Math.max(6, e.def.size * 0.28) : Math.max(0.9, e.def.size * 0.5));
+      const dx = p.x - e.x, dz = p.z - e.z;
+      const d = Math.hypot(dx, dz);
+      const rr = er + R;
+      if (d >= rr || d < 0.001) continue;
+      // 顶在怪身上：推到圆周外
+      p.x = e.x + (dx / d) * rr;
+      p.z = e.z + (dz / d) * rr;
+    }
+  }
+
+  // 水平圆柱 vs AABB：回退到进入前的坐标（贴面停住，绝不穿墙）+ 把剩余速度沿墙面切向保留
+  resolveXZ(world, prevX, prevZ) {
+    const R = PR_R;
+    const p = this.pos;
+    const boxes = world.blockers(p.x, p.z, 6);
+    for (let i = 0; i < boxes.length; i++) {
+      const b = boxes[i];
+      const top = b.destroyed ? 0 : b.h;
+      // 站得比它高（或它已倒塌）就不算撞墙
+      if (p.y >= top - 0.3) continue;
+      if (p.x <= b.x0 - R || p.x >= b.x1 + R || p.z <= b.z0 - R || p.z >= b.z1 + R) continue;
+      // 只在“上一个位置在外面”时才判为撞墙，避免卡在楼里出不来
+      const wasOutX = prevX <= b.x0 - R || prevX >= b.x1 + R;
+      const wasOutZ = prevZ <= b.z0 - R || prevZ >= b.z1 + R;
+      if (!wasOutX && !wasOutZ) continue;
+      if (wasOutX) {
+        p.x = prevX;
+        this.vel.x *= -0.08;
+      } else {
+        p.z = prevZ;
+        this.vel.z *= -0.08;
+      }
+    }
+  }
+
+  collide(world) {
+    const R = PR_R;
+    const p = this.pos;
+    // 下落中：脚在方块顶面之上且穿过顶面 → 落在顶上
+    if (this.vel.y <= 0) {
+      const boxes0 = world.blockers(p.x, p.z, 5);
+      for (let i = 0; i < boxes0.length; i++) {
+        const b = boxes0[i];
+        if (b.destroyed) continue;
+        const top = b.h;
+        if (p.y >= top - 0.9 && p.y <= top + 1.6 &&
+            p.x > b.x0 - R && p.x < b.x1 + R && p.z > b.z0 - R && p.z < b.z1 + R) {
+          p.y = top;
+          this.vel.y = 0;
+          this.onGround = true;
+          this.groundTop = top;
+          this.gliding = false;
+        }
+      }
+    }
+  }
+
+  release() {
+    if (!this.charging) return null;
+    this.charging = false;
+    const tier = this.tier;
+    this.cooldown = TIERS[tier].cooldown;
+    if (tier > 0) this.histTier = Math.max(this.histTier, tier);
+    this.hold = 0;
+    this.tier = 0;
+    return tier;
+  }
+
+  jump(tierOverride) {
+    if (!this.onGround) return -1;
+    const tier = clamp(Math.max(tierOverride || 0, this.histTier), 0, 5);
+    this.vel.y = Math.sqrt(2 * CFG.gravity * CFG.jumpHeightByTier[tier]);
+    this.onGround = false;
+    this.groundTop = 0;
+    this.gliding = false;
+    return tier;
+  }
+
+  airJump(tier) {
+    const t = clamp(tier || 0, 0, 5);
+    this.vel.y = Math.max(this.vel.y, Math.sqrt(2 * CFG.gravity * CFG.jumpHeightByTier[t] * 0.35));
+    this.onGround = false;
+    this.gliding = false;
+    return t;
+  }
+
+  takeDamage(v) {
+    if (this.invul > 0) return;
+    this.health = Math.max(0, this.health - Math.min(v, CFG.damageCap));
+    this.lastHit = performance.now() / 1000;
+    this.invul = 0.6;
+  }
+
+  update(dt, inp, nowSec, world) {
+    // 视角
+    this.yaw -= inp.lookX;
+    this.pitch = clamp(this.pitch - inp.lookY, -1.05, 1.0);
+    inp.lookX = 0; inp.lookY = 0;
+
+    // 移动方向（相机空间）
+    const fwd = { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) };
+    const rgt = { x: Math.cos(this.yaw), z: -Math.sin(this.yaw) };
+    let mx = inp.moveX, my = inp.moveY;
+    const ml = Math.hypot(mx, my);
+    if (ml > 1) { mx /= ml; my /= ml; }
+    const speed = (inp.sprint && !this.charging ? CFG.sprintSpeed : CFG.runSpeed) * (this.charging ? 0.45 : 1);
+    const tx = (fwd.x * my + rgt.x * mx) * speed;
+    const tz = (fwd.z * my + rgt.z * mx) * speed;
+    const acc = this.onGround ? 14 : 6;
+    this.vel.x += (tx - this.vel.x) * Math.min(1, acc * dt);
+    this.vel.z += (tz - this.vel.z) * Math.min(1, acc * dt);
+
+    // 蓄力
+    if (this.charging) {
+      this.hold += dt;
+      this.tier = this.tierForHold(this.hold);
+    }
+    this.cooldown = Math.max(0, this.cooldown - dt);
+
+    // 滑翔 / 快速下坠
+    if (this.gliding && this.onGround) this.gliding = false;
+    if (this.slamming && this.onGround) this.slamming = false;
+    this.vel.y -= CFG.gravity * dt;
+    if (this.gliding) {
+      this.vel.y = Math.max(this.vel.y, -CFG.glideFallSpeed);
+      const boost = 8 + this.histTier * 5;
+      this.vel.x += (fwd.x * my + rgt.x * mx) * boost * dt;
+      this.vel.z += (fwd.z * my + rgt.z * mx) * boost * dt;
+      this.vel.x *= 1 - 0.35 * dt;
+      this.vel.z *= 1 - 0.35 * dt;
+    }
+    if (this.slamming) this.vel.y = -CFG.slamSpeed;
+
+    // 积分
+    const prevX = this.pos.x, prevZ = this.pos.z;
+    this.pos.x += this.vel.x * dt;
+    this.pos.z += this.vel.z * dt;
+    this.pos.y += this.vel.y * dt;
+    // 与建筑/地标的方块碰撞：水平回退到贴面位置 + 允许站在楼顶
+    if (world && world.blockers) {
+      this.resolveXZ(world, prevX, prevZ);
+      this.collide(world);
+    }
+    let landed = false;
+    if (this.pos.y <= 0) {
+      if (this.slamming) landed = true;
+      this.slamming = false;
+      this.pos.y = 0;
+      this.vel.y = 0;
+      this.groundTop = 0;
+      this.onGround = true;
+      if (ml < 0.1) {
+        this.vel.x *= 1 - 10 * dt;
+        this.vel.z *= 1 - 10 * dt;
+      }
+    } else if (this.vel.y <= 0.01 && this.groundTop > 0 && Math.abs(this.pos.y - this.groundTop) < 0.12) {
+      // 站在楼顶：上一帧 collide() 把 y 钉在顶面，保持 grounded，才能继续从楼顶起跳
+      this.onGround = true;
+      this.vel.y = 0;
+    } else {
+      this.onGround = false;
+    }
+    const spd = Math.hypot(this.vel.x, this.vel.z);
+    if (this.onGround && spd > 0.5) this.walk += dt * spd * 0.9;
+    this.bob = this.onGround ? Math.sin(this.walk) * Math.min(1, spd / 8) * 0.06 : 0;
+
+    // 生命恢复：脱战 4 秒后每秒回 10 点
+    this.invul = Math.max(0, this.invul - dt);
+    const calm = nowSec - this.lastHit;
+    this.regenOut = calm > CFG.regenDelay ? Math.min(1, (calm - CFG.regenDelay) / 0.6) : 0;
+    if (this.regenOut > 0 && this.health < CFG.playerHealth) {
+      this.health = Math.min(CFG.playerHealth, this.health + CFG.regenRate * dt * this.regenOut);
+      this.regenAcc = (this.regenAcc || 0) + CFG.regenRate * dt * this.regenOut;
+    } else {
+      this.regenAcc = 0;
+    }
+
+    return { landedSlam: landed };
+  }
+}
+
+// ===== enemies.js =====
+// 敌人：普通小怪 + Boss
+
+
+class Enemies {
+  constructor() {
+    this.list = [];
+    this.shots = [];
+    this.spawnTimer = 4;
+    this.unlock = 0;
+    this.killed = 0;
+    this.stats = {};
+  }
+
+  setUnlock(n) { this.unlock = Math.max(this.unlock, n); }
+
+  count(id) { let n = 0; for (const e of this.list) if (e.id === id && !e.dead) n++; return n; }
+  countType(kind) { let n = 0; for (const e of this.list) if (e.kind === kind && !e.dead) n++; return n; }
+
+  spawn(kindName, id, def, px, pz) {
+    const isBoss = kindName === 'boss';
+    const dmin = isBoss ? CFG.bossSpawnMin : CFG.enemySpawnMin;
+    const dmax = isBoss ? CFG.bossSpawnMax : CFG.enemySpawnMax;
+    const a = Math.random() * Math.PI * 2;
+    const d = dmin + Math.random() * (dmax - dmin);
+    const e = {
+      kind: kindName, id: id, def: def,
+      x: px + Math.cos(a) * d, z: pz + Math.sin(a) * d,
+      hp: def.hp, maxHp: def.hp, dead: false,
+      cd: 1.5 + Math.random() * 2, hit: 0, spawnT: 0.8, seen: 0,
+      aiming: false,
+    };
+    this.list.push(e);
+    return e;
+  }
+
+  // 自动刷新：随进度一个个来，先刷“当前最强”Boss，再补小怪；每类上限各自独立
+  autoSpawn(px, pz, dt) {
+    this.spawnTimer -= dt;
+    if (this.spawnTimer > 0) return;
+    this.spawnTimer = 1.2;
+    const bosses = BOSSES.filter((b) => b.unlock <= this.unlock);
+    for (let i = bosses.length - 1; i >= 0; i--) {
+      const b = bosses[i];
+      if (this.count(b.id) >= b.limit) continue;
+      if (this.countType('boss') >= CFG.bossWorldMax) return;
+      this.spawn('boss', b.id, b, px, pz);
+      return;
+    }
+    const grunts = GRUNTS.filter((g) => g.unlock <= this.unlock);
+    if (!grunts.length) return;
+    if (this.countType('grunt') >= CFG.enemyWorldMax) return;
+    const avail = grunts.filter((g) => this.count(g.id) < g.limit);
+    if (!avail.length) return;
+    const g = avail[Math.floor(Math.random() * avail.length)];
+    this.spawn('grunt', g.id, g, px, pz);
+  }
+
+  update(dt, player, nowSec, onPlayerHit) {
+    this.autoSpawn(player.pos.x, player.pos.z, dt);
+    const far = [];
+    for (const e of this.list) {
+      if (e.dead) continue;
+      const isBoss = e.kind === 'boss';
+      let dx = player.pos.x - e.x, dz = player.pos.z - e.z;
+      let dist = Math.hypot(dx, dz) || 1;
+      // 太远的自动回收（避免无限堆积）
+      if (dist > 3000) { e.dead = true; continue; }
+      e.spawnT = Math.max(0, e.spawnT - dt);
+      e.hit = Math.max(0, e.hit - dt);
+      if (isBoss) {
+        const keep = Math.min(360, Math.max(60, e.def.size * 1.4));
+        if (dist > keep) {
+          const sp = 3.4 * dt;
+          e.x += (dx / dist) * sp;
+          e.z += (dz / dist) * sp;
+        }
+      } else {
+        const ang = Math.atan2(e.z - player.pos.z, e.x - player.pos.x) + dt * 0.4;
+        const r = 72;
+        const tx = player.pos.x + Math.cos(ang) * r;
+        const tz = player.pos.z + Math.sin(ang) * r;
+        const ddx = tx - e.x, ddz = tz - e.z;
+        const dd = Math.hypot(ddx, ddz) || 1;
+        e.x += (ddx / dd) * 4 * dt;
+        e.z += (ddz / dd) * 4 * dt;
+      }
+      e.cd -= dt;
+      // 攻击前摇：cd 归零前 0.9～0.5 秒锁定玩家位置（地上会出现红色预警圈）
+      e.aiming = e.cd < 0.9 && e.cd > 0;
+      if (e.aiming) {
+        e.tx = player.pos.x;
+        e.tz = player.pos.z;
+        e.ty = player.pos.y + 1;
+      }
+      const range = isBoss ? 620 : 130;
+      if (e.cd <= 0 && dist < range && e.spawnT <= 0) {
+        e.cd = isBoss ? CFG.bossInterval : CFG.gruntInterval;
+        const tx = e.aiming && e.tx !== undefined ? e.tx : player.pos.x;
+        const tz = e.aiming && e.tz !== undefined ? e.tz : player.pos.z;
+        const ty = e.aiming && e.ty !== undefined ? e.ty : player.pos.y + 1;
+        this.shots.push({
+          x0: e.x, y0: isBoss ? e.def.size * 0.5 : 2.4, z0: e.z,
+          x1: tx, y1: ty, z1: tz,
+          t: 0, life: isBoss ? 1.1 : 0.55,
+          dmg: isBoss ? CFG.bossDamage : CFG.gruntDamage,
+          boss: isBoss, r: isBoss ? 3.4 : 0.7,
+          boom: 0, // 爆炸计时（>0 时画爆炸）
+        });
+      }
+    }
+    for (let i = this.shots.length - 1; i >= 0; i--) {
+      const s = this.shots[i];
+      if (s.boom > 0) {
+        s.boom -= dt;
+        if (s.boom <= 0) this.shots.splice(i, 1);
+        continue;
+      }
+      s.t += dt;
+      if (s.t >= s.life) {
+        // 命中判定：落在预警圈半径内
+        const dx = s.x1 - player.pos.x, dz = s.z1 - player.pos.z;
+        const rad = s.boss ? 13 : 7;
+        if (dx * dx + dz * dz < rad * rad && player.pos.y < s.y1 + 6) {
+          player.takeDamage(s.dmg);
+          if (onPlayerHit) onPlayerHit(s);
+        }
+        s.boom = s.boss ? 0.6 : 0.32;
+        s.t = s.life;
+      }
+    }
+    this.list = this.list.filter((e) => !e.dead);
+  }
+
+  // 声浪命中：距离衰减 + 中途被墙挡住（穿透力有限）
+  hitByWave(ox, oz, range, dmg, blockers) {
+    let total = 0;
+    const killed = [];
+    for (const e of this.list) {
+      if (e.dead) continue;
+      const d = Math.hypot(e.x - ox, e.z - oz);
+      const R = e.kind === 'boss' ? Math.max(24, e.def.size * 0.5) : e.def.size;
+      if (d > range + R) continue;
+      let falloff = clamp(1 - d / (range * 1.2), 0.08, 1);
+      if (this.blocked(ox, oz, e.x, e.z, blockers)) falloff *= 0.35;
+      const applied = dmg * falloff;
+      e.hp -= applied;
+      total += Math.min(applied, e.maxHp);
+      e.hit = 0.3;
+      if (e.hp <= 0) { e.dead = true; killed.push(e); }
+    }
+    for (const e of killed) {
+      this.killed++;
+      this.stats[e.id] = (this.stats[e.id] || 0) + 1;
+    }
+    return { total: total, killed: killed };
+  }
+
+  blocked(ox, oz, ex, ez, blockers) {
+    if (!blockers || !blockers.length) return false;
+    const steps = 4;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / (steps + 1);
+      const x = ox + (ex - ox) * t;
+      const z = oz + (ez - oz) * t;
+      for (const b of blockers) {
+        if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && b.h > 14) return true;
+      }
+    }
+    return false;
+  }
+
+  nearestBoss(px, pz) {
+    let best = null, bd = 1e9;
+    for (const e of this.list) {
+      if (e.dead || e.kind !== 'boss') continue;
+      const d = Math.hypot(e.x - px, e.z - pz);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  clear() { this.list = []; this.shots = []; }
+}
+
+// ===== hud.js =====
+// HUD 与 DOM
+
+function $(id) { return document.getElementById(id); }
+
+const HUD_TIERS = ['低语', '哼声', '大喊', '嘶吼', '长啸', '终极一吼'];
+
+class Hud {
+  constructor() {
+    const g = (id) => document.getElementById(id);
+    this.el = {
+      capCoef: g('capCoef'), capExp: g('capExp'), capLore: g('capLore'),
+      capLabel: g('capLabel'), capBox: g('capBox'),
+      goalText: g('goalText'), goalFill: g('goalFill'), goalNum: g('goalNum'),
+      hp: g('hpFill'), pips: g('pips'), tierName: g('tierName'),
+      mult: g('multVal'), multFill: g('multFill'), dmgOut: g('dmgOut'),
+      hint: g('hint'), bossBar: g('bossBar'), bossName: g('bossName'),
+      bossFill: g('bossFill'), bossHp: g('bossHp'),
+      modeTag: g('modeTag'), sonarState: g('sonarState'),
+      waveCount: g('waveCount'), fps: g('fps'),
+    };
+    this.hintT = 0;
+    this.lastPips = -1;
+    this.lastMult = '';
+    this.buildPips();
+    this.mini = g('minimap');
+    this.mctx = this.mini.getContext('2d');
+  }
+
+  buildPips() {
+    const box = this.el.pips;
+    box.innerHTML = '';
+    for (let i = 0; i < 6; i++) box.appendChild(document.createElement('i'));
+  }
+
+  setMode(mode) {
+    this.el.modeTag.textContent = mode === 'blind' ? '盲人模式 · 声纳' : '正常模式 · 回响之眼';
+    this.el.modeTag.className = 'tag ' + mode;
+  }
+
+  explain(value, lore, isGoal) {
+    const s = toSci(value);
+    this.el.capCoef.textContent = '×' + Math.abs(s.coef).toFixed(2);
+    this.el.capExp.innerHTML = '10<sup>' + s.exp + '</sup>';
+    this.el.capLore.textContent = lore;
+    this.el.capLabel.textContent = isGoal ? '伤害上限 · 目标达成后 ×10' : '这一嗓的当量';
+    const box = this.el.capBox;
+    box.classList.remove('reveal');
+    void box.offsetWidth;
+    box.classList.add('reveal');
+  }
+
+  goal(text, cur, max) {
+    this.el.goalText.textContent = text;
+    this.el.goalFill.style.width = Math.min(100, (cur / max) * 100).toFixed(1) + '%';
+    this.el.goalNum.textContent = cur + ' / ' + max;
+  }
+
+  bars(p, regenOut) {
+    this.el.hp.style.width = p.health + '%';
+    this.el.hp.className = (regenOut > 0 && p.health < 100 ? 'fill regen' : (p.health < 35 ? 'fill low' : 'fill'));
+    const t = p.charging ? p.tier : -1;
+    if (t !== this.lastPips) {
+      const kids = this.el.pips.children;
+      for (let i = 0; i < kids.length; i++) kids[i].className = i <= t ? 'on' : '';
+      this.lastPips = t;
+    }
+    this.el.tierName.textContent = p.charging
+      ? '蓄力 · ' + HUD_TIERS[p.tier]
+      : (p.cooldown > 0 ? '嗓门恢复中…' : '按住左键 蓄力发声 · 空格 跳跃');
+  }
+
+  mult(m, cap) {
+    const key = m + '|' + cap;
+    if (key === this.lastMult) return;
+    this.lastMult = key;
+    this.el.multFill.style.width = (((Math.log2(m) + 4) / 8) * 100).toFixed(1) + '%';
+    this.el.mult.textContent = m >= 1 ? '×' + Math.round(m * 100) / 100 : '÷' + Math.round((1 / m) * 100) / 100;
+    this.el.dmgOut.textContent = '伤害 ' + shortSci(cap * m);
+  }
+
+  sonar(cd, active) {
+    this.el.sonarState.textContent = active ? '声纳扫描中…' : (cd > 0 ? '声纳冷却 ' + cd.toFixed(1) + 's' : '声纳就绪 · F');
+  }
+
+  hint(text, sec) {
+    this.el.hint.textContent = text;
+    this.el.hint.classList.remove('hidden');
+    this.hintT = sec || 2.5;
+  }
+
+  boss(e) {
+    if (!e) { this.el.bossBar.classList.add('hidden'); return; }
+    this.el.bossBar.classList.remove('hidden');
+    this.el.bossName.textContent = e.def.name + ' · 体型 ' + e.def.size + ' 米';
+    this.el.bossFill.style.width = Math.max(0, (e.hp / e.maxHp) * 100) + '%';
+    this.el.bossHp.textContent = shortSci(Math.max(0, e.hp)) + ' / ' + shortSci(e.maxHp);
+  }
+
+  tick(dt) {
+    if (this.hintT > 0) {
+      this.hintT -= dt;
+      if (this.hintT <= 0) this.el.hint.classList.add('hidden');
+    }
+  }
+}
+
+// ===== main.js =====
+// 《指数回声 Echo of Exponential》—— 可玩最小原型（纯 Canvas 2D 软 3D，无依赖）
+
+
+
+
+
+
+
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 820;
+// 档位名字直接取自配置，避免与其它模块重复声明
+const TIER_NAMES = TIERS.map((t) => t.name);
+
+const G = {
+  mode: 'normal', screen: 'menu',
+  cap: CFG.capStart, mult: CFG.multDefault, goalIndex: 0, goalHits: 0,
+  killed: 0, destroyed: 0,
+  sonarCd: 0, sonarT: 0, sonarRange: 0,
+  slowT: 0, slowF: 1, flash: 0, shake: 0, cgT: 0,
+  hurtT: 0, hurtDir: -1, hurtAmount: 0, hitStop: 0,
+  waves: [], rings: [], debris: [], texts: [],
+  lastHit: 0,
+};
+
+const cam = new Camera();
+const player = new Player();
+const world = new World(CFG.seed);
+const enemies = new Enemies();
+let hud = null, cv = null, ctx = null, DPR = 1;
+const KEYS = new Set();
+const inp = { moveX: 0, moveY: 0, lookX: 0, lookY: 0, sprint: false };
+const ptr = { down: false, lx: 0, ly: 0 };
+let stick = { on: false, id: null, sx: 0, sy: 0, x: 0, y: 0 };
+let lookT = { on: false, id: null, lx: 0, ly: 0 };
+let thirdPerson = true;
+let lastMs = performance.now(), fpsAcc = 0, fpsN = 0;
+
+function boot() {
+  cv = $('game');
+  ctx = cv.getContext('2d');
+  if (IS_MOBILE) document.body.classList.add('mobile');
+  hud = new Hud();
+  resize();
+  window.addEventListener('resize', resize);
+  $('btnNormal').addEventListener('click', () => start('normal'));
+  $('btnBlind').addEventListener('click', () => start('blind'));
+  $('btnResume').addEventListener('click', () => togglePause());
+  $('btnSave').addEventListener('click', () => saveGame());
+  $('btnLoad').addEventListener('click', () => loadGame());
+  $('btnFull').addEventListener('click', () => {
+    if (!document.fullscreenElement) { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); }
+    else if (document.exitFullscreen) document.exitFullscreen();
+  });
+  bindButtons();
+  bindKeys();
+  bindPointer();
+  requestAnimationFrame(frame);
+}
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const W = window.innerWidth, H = window.innerHeight;
+  cv.width = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  cv.style.width = W + 'px';
+  cv.style.height = H + 'px';
+  const mw = IS_MOBILE ? 96 : 130;
+  hud.mini.width = Math.floor(mw * DPR);
+  hud.mini.height = Math.floor(mw * DPR);
+  hud.mini.style.width = mw + 'px';
+  hud.mini.style.height = mw + 'px';
+  hud.mctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+// ---------------- 输入 ----------------
+function bindKeys() {
+  const stop = ['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+  window.addEventListener('keydown', (e) => {
+    if (stop.indexOf(e.code) >= 0) e.preventDefault();
+    if (KEYS.has(e.code)) return;
+    KEYS.add(e.code);
+    if (G.screen === 'pause') { if (e.code === 'Escape') togglePause(); return; }
+    if (G.screen !== 'game') return;
+    if (e.code === 'Space') doJump();
+    else if (e.code === 'KeyZ') doShoutStart();
+    else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') doGlide();
+    else if (e.code === 'KeyQ') doSlam();
+    else if (e.code === 'KeyE' || e.code === 'KeyG') doGlide();
+    else if (e.code === 'KeyF') doSonar();
+    else if (e.code === 'KeyV') toggleView();
+    else if (e.code === 'Escape' || e.code === 'KeyT') togglePause();
+    else if (e.code === 'BracketLeft' || e.code === 'Numpad1' || e.code === 'Minus') adjMult(false);
+    else if (e.code === 'BracketRight' || e.code === 'Numpad2' || e.code === 'Equal') adjMult(true);
+    else if (e.code === 'KeyO') saveGame();
+    else if (e.code === 'KeyP') loadGame();
+    else if (e.code === 'KeyM') musicToggle();
+    if (actx && actx.state === 'suspended' && actx.resume) { try { actx.resume(); } catch (err) {} }
+  });
+  window.addEventListener('keyup', (e) => {
+    KEYS.delete(e.code);
+    if (e.code === 'KeyZ' && G.screen === 'game') doShoutEnd();
+  });
+  window.addEventListener('blur', () => KEYS.clear());
+}
+
+function bindPointer() {
+  cv.addEventListener('mousedown', (e) => {
+    if (G.screen !== 'game') return;
+    if (!document.pointerLockElement && cv.requestPointerLock) { try { cv.requestPointerLock(); } catch (err) {} }
+    if (e.button === 0) doShoutStart();
+    else if (e.button === 2) doGlide();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (G.screen !== 'game') return;
+    if (document.pointerLockElement === cv) {
+      inp.lookX += e.movementX * 0.0030;
+      inp.lookY += e.movementY * 0.0030;
+    }
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 0 && G.screen === 'game') doShoutEnd();
+  });
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
+  let lastWheel = 0;
+  window.addEventListener('wheel', (e) => {
+    if (G.screen !== 'game') return;
+    e.preventDefault();
+    const now = performance.now();
+    if (now - lastWheel < 70) return;
+    lastWheel = now;
+    adjMult(e.deltaY < 0);
+  }, { passive: false });
+
+  cv.addEventListener('touchstart', onTS, { passive: false });
+  cv.addEventListener('touchmove', onTM, { passive: false });
+  cv.addEventListener('touchend', onTE, { passive: false });
+  cv.addEventListener('touchcancel', onTE, { passive: false });
+}
+
+function onTS(e) {
+  if (G.screen !== 'game') return;
+  for (const t of e.changedTouches) {
+    if (!stick.on && t.clientX < window.innerWidth * 0.45 && t.clientY > window.innerHeight * 0.4) {
+      stick = { on: true, id: t.identifier, sx: t.clientX, sy: t.clientY, x: t.clientX, y: t.clientY };
+    } else if (!lookT.on) {
+      lookT = { on: true, id: t.identifier, lx: t.clientX, ly: t.clientY };
+    }
+  }
+  e.preventDefault();
+}
+function onTM(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === stick.id) { stick.x = t.clientX; stick.y = t.clientY; }
+    else if (t.identifier === lookT.id) {
+      inp.lookX += (t.clientX - lookT.lx) * 0.005;
+      inp.lookY += (t.clientY - lookT.ly) * 0.005;
+      lookT.lx = t.clientX; lookT.ly = t.clientY;
+    }
+  }
+  e.preventDefault();
+}
+function onTE(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === stick.id) stick = { on: false, id: null, sx: 0, sy: 0, x: 0, y: 0 };
+    else if (t.identifier === lookT.id) lookT = { on: false, id: null, lx: 0, ly: 0 };
+  }
+}
+
+function bindButtons() {
+  const on = (id, down, up) => {
+    const n = $(id);
+    if (!n) return;
+    n.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); n.classList.add('down'); if (down) down(); }, { passive: false });
+    const u = (e) => { if (e) e.preventDefault(); n.classList.remove('down'); if (up) up(); };
+    n.addEventListener('touchend', u, { passive: false });
+    n.addEventListener('touchcancel', u, { passive: false });
+    n.addEventListener('mousedown', (e) => { e.preventDefault(); n.classList.add('down'); if (down) down(); });
+    n.addEventListener('mouseup', (e) => { e.preventDefault(); u(e); });
+    n.addEventListener('click', (e) => e.preventDefault());
+  };
+  on('btnShout', doShoutStart, doShoutEnd);
+  on('btnJump', doJump);
+  on('btnSlam', doSlam);
+  on('btnGlide', doGlide);
+  on('btnSonar', doSonar);
+  on('btnView', toggleView);
+  on('btnMultUp', () => adjMult(true));
+  on('btnMultDown', () => adjMult(false));
+  on('btnPause', togglePause);
+}
+
+// ---------------- 流程 ----------------
+function start(mode) {
+  G.mode = mode;
+  G.screen = 'game';
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  $('touch').classList.remove('hidden');
+  if (!IS_MOBILE) $('btnPause').classList.remove('hidden');
+  hud.mini.style.display = mode === 'blind' && !IS_MOBILE ? 'block' : 'none';
+  hud.setMode(mode);
+  world.update(player.pos.x, player.pos.z);
+  hud.mult(G.mult, G.cap);
+  refreshGoal();
+  explain(G.cap * G.mult, true);
+  startMusic();
+  hud.hint(mode === 'blind'
+    ? '盲人模式：视野只剩眼前一小圈。按 F / 点「声纳」扫描四周，声压越高扫得越远'
+    : '左键蓄力，松手吼出去；空格跳跃；滚轮 / 右侧「＋」「－」调节伤害倍率', 5.5);
+}
+
+function togglePause() {
+  if (G.screen === 'game') {
+    G.screen = 'pause';
+    $('pause').classList.remove('hidden');
+    if (document.pointerLockElement) document.exitPointerLock();
+  } else if (G.screen === 'pause') {
+    G.screen = 'game';
+    $('pause').classList.add('hidden');
+  }
+}
+
+function toggleView() {
+  thirdPerson = !thirdPerson;
+  hud.hint(thirdPerson ? '第三人称视角' : '第一人称视角', 1.2);
+}
+
+function saveGame() {
+  try { localStorage.setItem('echo.save.v1', world.serialize(player, G)); hud.hint('进度已保存（只存差异：位置 + 损坏清单 + 上限）', 2.4); }
+  catch (e) { hud.hint('保存失败：' + e.message, 3); }
+}
+function loadGame() {
+  try {
+    const raw = localStorage.getItem('echo.save.v1');
+    if (!raw) { hud.hint('没有找到存档', 2); return; }
+    const s = world.deserialize(raw);
+    if (s.p) {
+      player.pos.x = s.p[0]; player.pos.y = s.p[1]; player.pos.z = s.p[2];
+      player.yaw = s.p[3]; player.pitch = s.p[4];
+    }
+    if (s.G) {
+      G.cap = s.G.cap; G.mult = s.G.mult; G.goalIndex = s.G.goalIndex;
+      G.killed = s.G.killed || 0; G.destroyed = s.G.destroyed || 0;
+    }
+    world.update(player.pos.x, player.pos.z);
+    hud.mult(G.mult, G.cap);
+    refreshGoal();
+    explain(G.cap * G.mult, true);
+    hud.hint('存档已载入', 2);
+  } catch (e) { hud.hint('读取失败：' + e.message, 3); }
+}
+// ---------------- 动作 ----------------
+function doShoutStart() {
+  player.startCharge();
+}
+function doShoutEnd() {
+  const tier = player.release();
+  if (tier !== null) shout(tier);
+}
+function doJump() {
+  const t = player.jump(0);
+  if (t >= 0) hud.hint('蓄力跳跃 · ' + CFG.jumpHeightByTier[t] + ' 米（跳跃高度随声压级增长）', 1.4);
+}
+function doGlide() {
+  if (!player.onGround) { player.gliding = !player.gliding; hud.hint(player.gliding ? '滑翔中' : '收起滑翔', 1); }
+}
+function doSlam() {
+  if (!player.onGround) { player.slamming = true; hud.hint('快速下坠', 0.8); }
+}
+
+function doSonar() {
+  if (G.sonarCd > 0) return;
+  G.sonarCd = CFG.sonarCooldown;
+  const tier = Math.max(player.histTier, G.mode === 'blind' ? 1 : 2);
+  const range = CFG.sonarRangeByTier[tier];
+  G.sonarT = CFG.sonarDuration;
+  G.sonarRange = range;
+  G.rings.push({ x: player.pos.x, z: player.pos.z, r: 0, range: range, t: 0, life: 1.5, tier: tier, type: 'sonar' });
+  const now = performance.now() / 1000;
+  for (const e of world.near(player.pos.x, player.pos.z, range)) e.seen = now;
+  for (const en of enemies.list) {
+    if (Math.hypot(en.x - player.pos.x, en.z - player.pos.z) <= range) en.seen = now;
+  }
+}
+
+function explain(value, isGoal) {
+  const s = toSci(value);
+  hud.explain(value, pickLore(LORE_TABLE, s.exp), isGoal);
+}
+
+function refreshGoal() {
+  const tpl = GOAL_TEMPLATES[Math.min(G.goalIndex, GOAL_TEMPLATES.length - 1)];
+  hud.goal(tpl(G.goalIndex + 1), G.goalHits, CFG.goalWaves);
+}
+
+function adjMult(up) {
+  const next = up ? G.mult * 2 : G.mult / 2;
+  if (next < CFG.multMin - 1e-9 || next > CFG.multMax + 1e-9) { hud.hint('倍率已到边界（÷16 ~ ×16）', 1.2); return; }
+  G.mult = next;
+  hud.mult(G.mult, G.cap);
+  explain(G.cap * G.mult, false);
+  hud.hint('伤害倍率 ' + (G.mult >= 1 ? '×' + G.mult : '÷' + (1 / G.mult)), 1);
+}
+
+function shout(tier) {
+  const T = TIERS[tier];
+  const range = CFG.sonarRangeByTier[tier] + Math.max(0, Math.log10(G.cap) - 3) * 6 + 12;
+  const dmg = G.cap * G.mult * T.dmgScale;
+  const ox = player.pos.x, oz = player.pos.z;
+  G.waves.push({ x: ox, z: oz, r: 0, range: range, t: 0, life: 2.0, tier: tier, speed: CFG.waveBaseSpeed + tier * 55 });
+  G.rings.push({ x: ox, z: oz, r: 0, range: range, t: 0, life: 1.5, tier: tier, type: 'shock' });
+  G.texts.push({ x: ox, y: player.pos.y + 3.4, z: oz, text: '「' + TIER_NAMES[tier] + '」', life: 1.6, tier: tier });
+  if (tier >= 3) {
+    G.shake = Math.max(G.shake, tier * 1.2);
+    player.airJump(tier);
+    if (tier === 4) { G.slowT = 0.4; G.slowF = 0.6; G.flash = 0.2; }
+    if (tier >= 5) { G.slowT = 0.6; G.slowF = 0.42; G.flash = 0.5; G.cgT = 1.3; }
+  }
+  let broke = 0;
+  const boxes = world.near(ox, oz, range);
+  for (const e of boxes) {
+    const d = Math.hypot(e.x - ox, e.z - oz);
+    if (d > range + Math.max(e.w, e.d) * 0.5) continue;
+    const bulk = Math.max(1, Math.min(4, e.h / 40));
+    const falloff = clamp(1 - d / (range * 1.3), 0.05, 1) * (0.18 + T.pen) / bulk;
+    if (world.damage(e, dmg * falloff)) { broke++; spawnDebris(e); G.destroyed++; }
+  }
+  const blockers = world.blockers(ox, oz, range);
+  const hit = enemies.hitByWave(ox, oz, range, dmg, blockers);
+  for (const e of hit.killed) {
+    G.killed++;
+    G.texts.push({ x: e.x, y: e.def.size * 0.5 + 4, z: e.z, text: e.def.name + ' · 破碎', life: 2, tier: 5 });
+    if (e.kind === 'boss') G.flash = Math.max(G.flash, 0.4);
+  }
+  G.lastHit = hit.total;
+  explain(dmg, false);
+  G.goalHits += 1;
+  if (broke > 0) G.shake = Math.max(G.shake, 0.8 + Math.min(3, broke * 0.2));
+  if (G.goalHits >= CFG.goalWaves) completeGoal(); else refreshGoal();
+  audioBoom(tier);
+}
+
+function spawnDebris(e) {
+  const room = CFG.debrisMax - G.debris.length;
+  if (room <= 0) return;
+  const n = Math.min(room, e.landmark ? 10 : 5);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const base = Math.max(4, Math.min(14, Math.max(e.w, e.d) * 0.45));
+    const s = base * (0.55 + Math.random() * 0.9);
+    G.debris.push({
+      x: e.x + (Math.random() - 0.5) * e.w,
+      y: 2 + Math.random() * e.h * 0.8,
+      z: e.z + (Math.random() - 0.5) * e.d,
+      sx: s, sy: s * (0.5 + Math.random()), sz: s * (0.6 + Math.random()),
+      vx: Math.cos(a) * (8 + Math.random() * 22), vy: 8 + Math.random() * 20, vz: Math.sin(a) * (8 + Math.random() * 22),
+      rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 8,
+      life: CFG.debrisLifeMin + Math.random() * (CFG.debrisLifeMax - CFG.debrisLifeMin), age: 0,
+      color: e.type === 'glass' ? '#c8ecff' : (e.landmark ? '#b8c6e8' : '#cfd8e4'),
+    });
+  }
+}
+
+function completeGoal() {
+  G.goalHits = 0;
+  G.goalIndex += 1;
+  G.cap *= CFG.capGrowth;
+  enemies.setUnlock(G.goalIndex);
+  refreshGoal();
+  explain(G.cap * G.mult, true);
+  hud.hint('目标达成！伤害上限提升到 ' + shortSci(G.cap) + '，更大的东西开始靠近', 3.4);
+  G.flash = 0.55;
+  G.rings.push({ x: player.pos.x, z: player.pos.z, r: 0, range: 200, t: 0, life: 2.2, tier: 5, type: 'goal' });
+}
+
+let actx = null, audioOn = true;
+function audioBoom(tier) {
+  if (!audioOn) return;
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = tier >= 4 ? 'sawtooth' : 'sine';
+    const f0 = 130 + tier * 70;
+    o.frequency.setValueAtTime(f0 * 2.4, t);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.5, t + 0.45);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05 + tier * 0.03, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6 + tier * 0.18);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t + 1 + tier * 0.2);
+  } catch (err) { audioOn = false; }
+}
+// ---------------- 背景音乐（WebAudio 现场合成，无音频文件） ----------------
+// 野心随伤害上限上升：和弦更亮、BPM 更快、鼓点更密
+let music = null;
+const MUSIC_ROOTS = [55, 61.74, 49, 51.91, 43.65, 58.27]; // A1 B1 G1 G#1 F1 A#1
+const MUSIC_SCALE = [0, 3, 5, 7, 10];                       // 小调五声
+
+function midiToHz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+function musicTier() {
+  return clamp(Math.floor((Math.log10(G.cap) - 4) / 2), 0, 4);
+}
+
+function ensureAudio() {
+  if (!audioOn) return null;
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  } catch (err) { audioOn = false; return null; }
+}
+
+function startMusic() {
+  const ac = ensureAudio();
+  if (!ac) return;
+  if (!music) {
+    const master = ac.createGain();
+    master.gain.value = 0.0001;
+    master.connect(ac.destination);
+    master.gain.exponentialRampToValueAtTime(0.5, ac.currentTime + 2.5);
+    music = { ac: ac, master: master, next: 0, step: 0, beat: 0.46 };
+    music.next = ac.currentTime + 0.1;
+  }
+  // 浏览器自动播放策略：第一次用户手势时才能真正出声，这里持续尝试
+  if (ac.state === 'suspended' && ac.resume) { try { ac.resume(); } catch (err) {} }
+}
+
+function musicToggle() {
+  if (!music || !actx) { startMusic(); hud.hint('背景音乐 开', 1.2); return; }
+  const on = music.on !== false;
+  music.on = !on;
+  const g = music.master.gain;
+  g.cancelScheduledValues(actx.currentTime);
+  g.setValueAtTime(Math.max(0.0001, g.value), actx.currentTime);
+  g.exponentialRampToValueAtTime(on ? 0.0001 : 0.5, actx.currentTime + 0.5);
+  hud.hint(on ? '背景音乐 关' : '背景音乐 开', 1.2);
+}
+
+function mNote(t, freq, dur, type, vol, filt) {
+  if (!music) return;
+  const ac = music.ac;
+  const o = ac.createOscillator();
+  const g = ac.createGain();
+  o.type = type || 'triangle';
+  o.frequency.value = freq;
+  let node = o;
+  if (filt) {
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = filt;
+    o.connect(f); node = f;
+  }
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  node.connect(g); g.connect(music.master);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+
+function mDrum(t, kind, vol) {
+  if (!music) return;
+  const ac = music.ac;
+  if (kind === 'kick') {
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.16);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+    o.connect(g); g.connect(music.master);
+    o.start(t); o.stop(t + 0.3);
+    return;
+  }
+  const len = 0.06;
+  const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  const bp = ac.createBiquadFilter();
+  bp.type = kind === 'hat' ? 'highpass' : 'bandpass';
+  bp.frequency.value = kind === 'hat' ? 6200 : 1800;
+  const g = ac.createGain();
+  g.gain.value = vol;
+  src.connect(bp); bp.connect(g); g.connect(music.master);
+  src.start(t);
+}
+
+function scheduleMusic() {
+  if (!music) return;
+  if (music.step >= 2000) return; // 防止异常情况下排程爆炸
+  const ac = music.ac;
+  // 被浏览器挂起时 currentTime 不前进：继续尝试恢复，并且不要卡住调度
+  if (ac.state === 'suspended') { try { ac.resume(); } catch (err) {} return; }
+  const tier = musicTier();
+  music.beat = 0.46 - tier * 0.03;
+  const nowT = ac.currentTime;
+  if (!isFinite(music.next) || music.next < nowT) music.next = nowT + 0.05;
+  if (music.next > nowT + 3) music.next = nowT + 0.05;
+  const look = ac.currentTime + 0.35;
+  while (music.next < look) {
+    const t = music.next;
+    const s = music.step % 16;
+    const bar = Math.floor(music.step / 16);
+    const root = MUSIC_ROOTS[(Math.floor(bar / 2)) % MUSIC_ROOTS.length];
+    // 低音脉冲
+    if (s % 4 === 0) mNote(t, root, music.beat * 1.8, 'sawtooth', 0.10 + tier * 0.015, 260);
+    else if (tier >= 2 && s % 4 === 2) mNote(t, root * 2, music.beat * 0.7, 'sawtooth', 0.05, 300);
+    // 铺底和声（每两小节换一次）
+    if (s === 0) {
+      const deg = MUSIC_SCALE[(bar * 3) % MUSIC_SCALE.length];
+      const f = midiToHz(57 + deg);
+      mNote(t, f, music.beat * 15, 'sine', 0.05 + tier * 0.008, 1400);
+      mNote(t, f * 1.5, music.beat * 15, 'sine', 0.035, 1200);
+    }
+    // 琶音 / 旋律：段位越高越密
+    const dens = tier >= 3 ? 1 : (tier >= 1 ? 2 : 4);
+    if (s % dens === 0) {
+      const deg = MUSIC_SCALE[(s * 3 + bar * 5) % MUSIC_SCALE.length];
+      const oct = tier >= 2 && s % 8 === 0 ? 24 : 12;
+      mNote(t, midiToHz(60 + deg + oct), music.beat * 1.2, 'triangle', 0.045 + tier * 0.01, 3200);
+    }
+    // 鼓
+    if (s % 8 === 0) mDrum(t, 'kick', 0.16 + tier * 0.02);
+    if (tier >= 1 && (s === 4 || s === 12)) mDrum(t, 'snare', 0.07);
+    if (tier >= 1 && s % 2 === 1) mDrum(t, 'hat', 0.03 + tier * 0.012);
+    music.next += music.beat / 2;
+    music.step++;
+  }
+}
+
+// ---------------- 主循环 ----------------
+function frame(now) {
+  let dt = (now - lastMs) / 1000;
+  lastMs = now;
+  if (!(dt > 0)) dt = 0;
+  if (dt > 0.1) dt = 0.1;
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.5) {
+    if (hud.el.fps) hud.el.fps.textContent = Math.round(fpsN / fpsAcc) + ' FPS';
+    fpsAcc = 0; fpsN = 0;
+  }
+  const slow = G.slowT > 0 ? G.slowF : 1;
+  G.slowT = Math.max(0, G.slowT - dt);
+  if (G.screen === 'game') { step(dt * slow, dt); scheduleMusic(); }
+  else if (G.screen === 'menu') idleCamera(dt);
+  render(dt);
+  hud.tick(dt);
+  requestAnimationFrame(frame);
+}
+
+function idleCamera(dt) {
+  player.yaw += dt * 0.06;
+}
+
+function step(dt, rawDt) {
+  const nowSec = performance.now() / 1000;
+  inp.moveX = 0; inp.moveY = 0;
+  if (KEYS.has('KeyW') || KEYS.has('ArrowUp')) inp.moveY += 1;
+  if (KEYS.has('KeyS') || KEYS.has('ArrowDown')) inp.moveY -= 1;
+  if (KEYS.has('KeyA') || KEYS.has('ArrowLeft')) inp.moveX -= 1;
+  if (KEYS.has('KeyD') || KEYS.has('ArrowRight')) inp.moveX += 1;
+  if (stick.on) {
+    const dx = stick.x - stick.sx, dy = stick.y - stick.sy;
+    const len = Math.hypot(dx, dy);
+    if (len > 2) {
+      const k = Math.min(len, 54) / 54 / len;
+      inp.moveX += dx * k;
+      inp.moveY += -dy * k;
+    }
+  }
+  inp.sprint = KEYS.has('ShiftLeft') || KEYS.has('ShiftRight');
+
+  const r = player.update(dt, inp, nowSec, world);
+  player.resolveEnemies(enemies.list, player.pos.x, player.pos.z);
+  if (r.landedSlam) {
+    const rad = 24 + player.histTier * 8;
+    G.shake = Math.max(G.shake, 5);
+    G.rings.push({ x: player.pos.x, z: player.pos.z, r: 0, range: rad, t: 0, life: 1.1, tier: 3, type: 'shock' });
+    const res = enemies.hitByWave(player.pos.x, player.pos.z, rad, G.cap * G.mult * 0.4, null);
+    for (const e of res.killed) G.killed++;
+  }
+
+  world.update(player.pos.x, player.pos.z);
+  enemies.update(dt, player, nowSec, (shot) => {
+    // 受击反馈：镜头重震 + 红闪 + 屏幕方向指示器 + 短暂顿帧
+    G.shake = Math.max(G.shake, shot.boss ? 16 : 9);
+    G.flash = Math.max(G.flash, shot.boss ? 0.55 : 0.32);
+    G.hurtT = 0.75;
+    G.hurtAmount = shot.boss ? 1 : 0.55;
+    G.hurtDir = Math.atan2(shot.x0 - player.pos.x, shot.z0 - player.pos.z);
+    G.hitStop = 0.07;
+    if (audioBoom) audioBoom(shot.boss ? 0.7 : 0.35);
+  });
+
+  if (G.sonarCd > 0) G.sonarCd = Math.max(0, G.sonarCd - rawDt);
+  if (G.sonarT > 0) G.sonarT = Math.max(0, G.sonarT - rawDt);
+  G.shake *= Math.pow(0.05, dt);
+  if (G.hurtT > 0) G.hurtT = Math.max(0, G.hurtT - dt);
+  if (G.hitStop > 0) G.hitStop = Math.max(0, G.hitStop - dt);
+  G.flash = Math.max(0, G.flash - dt * 1.8);
+  G.cgT = Math.max(0, G.cgT - dt);
+
+  for (let i = G.waves.length - 1; i >= 0; i--) {
+    const w = G.waves[i];
+    w.t += dt; w.r += w.speed * dt;
+    if (w.t > w.life) G.waves.splice(i, 1);
+  }
+  for (let i = G.rings.length - 1; i >= 0; i--) {
+    const ring = G.rings[i];
+    ring.t += dt;
+    ring.r = (ring.t / ring.life) * ring.range;
+    if (ring.t > ring.life) G.rings.splice(i, 1);
+  }
+  for (let i = G.debris.length - 1; i >= 0; i--) {
+    const d = G.debris[i];
+    d.age += dt;
+    d.vy -= 26 * dt;
+    d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
+    d.rot += d.spin * dt;
+    if (d.y < d.sy * 0.4) { d.y = d.sy * 0.4; d.vy = Math.abs(d.vy) * 0.22; d.vx *= 0.6; d.vz *= 0.6; d.spin *= 0.65; }
+    if (d.age > d.life) G.debris.splice(i, 1);
+  }
+  for (let i = G.texts.length - 1; i >= 0; i--) {
+    const t = G.texts[i];
+    t.life -= dt; t.y += dt * 5;
+    if (t.life <= 0) G.texts.splice(i, 1);
+  }
+  if (player.health <= 1) {
+    player.health = 60;
+    player.pos.y = 40;
+    player.vel.y = 8;
+    hud.hint('你被震退了。敌人单次伤害都有上限，不存在秒杀', 3);
+  }
+  hud.bars(player, player.regenOut || 0);
+  hud.mult(G.mult, G.cap);
+  hud.sonar(G.sonarCd, G.sonarT > 0);
+  hud.boss(enemies.nearestBoss(player.pos.x, player.pos.z));
+  hud.el.waveCount.textContent = '震碎 ' + G.destroyed + ' 栋建筑 · 击破 ' + G.killed + ' 只巨物';
+}
+// ---------------- 渲染 ----------------
+const COLORS = {
+  glass: '#bfe9ff', concrete: '#e4e9f0', stone: '#c8ced9', wood: '#efe2c8',
+  brick: '#e9b7a0', park: '#dbe3ec', landmark: '#b9cdf2',
+};
+
+// 受击反馈：屏幕四周红晕 + 伤害来源方向箭头
+function drawHurtOverlay(W, H) {
+  if (G.hurtT <= 0) return;
+  const k = G.hurtT / 0.75;
+  const a = Math.min(1, k * 1.25) * (0.55 + 0.45 * G.hurtAmount);
+  const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.22, W / 2, H / 2, Math.max(W, H) * 0.72);
+  g.addColorStop(0, 'rgba(255,40,60,0)');
+  g.addColorStop(0.62, 'rgba(255,36,56,' + (a * 0.30).toFixed(3) + ')');
+  g.addColorStop(1, 'rgba(210,12,32,' + (a * 0.78).toFixed(3) + ')');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // 方向指示：把世界里的来袭方向换算成屏幕角度
+  if (G.hurtDir >= 0) {
+    const cx = W / 2, cy = H / 2;
+    const rad = Math.min(W, H) * 0.30;
+    // 来袭方向相对玩家朝向：right 分量决定左右，fwd 分量决定上下
+    const rel = G.hurtDir - cam.yaw;
+    const rx = Math.cos(rel), rz = -Math.sin(rel);
+    const fx = -Math.sin(rel), fz = -Math.cos(rel);
+    const sx = cx + rx * rad;
+    const sy = cy - fz * rad * 0.62;
+    const rot = Math.atan2(rx, -fz);
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(rot);
+    ctx.globalAlpha = Math.min(1, k * 1.4);
+    ctx.beginPath();
+    ctx.moveTo(0, -26); ctx.lineTo(17, 10); ctx.lineTo(0, 2); ctx.lineTo(-17, 10);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,70,86,0.92)';
+    ctx.shadowColor = 'rgba(255,60,80,0.9)';
+    ctx.shadowBlur = 16;
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function render(dt) {
+  const W = window.innerWidth, H = window.innerHeight;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const blind = G.mode === 'blind' && G.screen !== 'menu';
+  const sh = Math.min(G.shake, 9);
+  const eye = player.pos.y + CFG.eyeHeight;
+  cam.yaw = player.yaw + (Math.random() - 0.5) * sh * 0.0022;
+  cam.pitch = clamp(player.pitch + (Math.random() - 0.5) * sh * 0.0022, -1.2, 1.2);
+  const tp = thirdPerson && G.screen !== 'menu';
+  if (tp) {
+    const back = 9.5;
+    cam.x = player.pos.x + Math.sin(player.yaw) * back * Math.cos(player.pitch);
+    cam.z = player.pos.z + Math.cos(player.yaw) * back * Math.cos(player.pitch);
+    cam.y = Math.max(1.4, eye - Math.sin(player.pitch) * back + 1.4);
+  } else {
+    cam.x = player.pos.x; cam.z = player.pos.z; cam.y = eye + player.bob;
+    if (G.screen === 'menu') cam.y = 14;
+  }
+  cam.fov = CFG.fov;
+  cam.setup(W, H);
+
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  if (blind) { sky.addColorStop(0, '#02050a'); sky.addColorStop(0.55, '#061019'); sky.addColorStop(1, '#0a1a24'); }
+  else { sky.addColorStop(0, '#15314d'); sky.addColorStop(0.45, '#6ea3cb'); sky.addColorStop(1, '#d7eaf6'); }
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+  if (!blind) {
+    const g = ctx.createRadialGradient(W * 0.72, H * 0.15, 6, W * 0.72, H * 0.15, H * 0.45);
+    g.addColorStop(0, 'rgba(255,247,222,0.95)');
+    g.addColorStop(0.16, 'rgba(255,236,190,0.42)');
+    g.addColorStop(1, 'rgba(255,236,190,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  } else {
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.26, 4, W * 0.5, H * 0.26, H * 0.34);
+    g.addColorStop(0, 'rgba(150,220,255,0.30)');
+    g.addColorStop(1, 'rgba(150,220,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  const farP = cam.screen(cam.x - Math.sin(player.yaw) * 3000, -cam.y * 0.9, cam.z - Math.cos(player.yaw) * 3000);
+  const hy = clamp(farP ? farP.y : H * 0.52, 0, H);
+  const grd = ctx.createLinearGradient(0, hy, 0, H);
+  if (blind) { grd.addColorStop(0, '#081522'); grd.addColorStop(1, '#03070c'); }
+  else { grd.addColorStop(0, '#c9dae5'); grd.addColorStop(0.3, '#e8eff4'); grd.addColorStop(1, '#f5f8fa'); }
+  ctx.fillStyle = grd; ctx.fillRect(0, hy, W, H - hy);
+
+  const towers = world.skyline(player.pos.x, player.pos.z, 950);
+  towers.sort((a, b) => b.h - a.h);
+  for (const s of towers) {
+    const base = cam.screen(s.x, 0, s.z);
+    const l = cam.screen(s.x - s.w / 2, 0, s.z);
+    const r2 = cam.screen(s.x + s.w / 2, 0, s.z);
+    if (!base || !l || !r2) continue;
+    const top = base.y - s.h * base.s;
+    const wpx = Math.abs(r2.x - l.x);
+    if (wpx < 1.5) continue;
+    const far = clamp((Math.hypot(s.x - player.pos.x, s.z - player.pos.z) - 200) / 750, 0, 1);
+    ctx.fillStyle = blind
+      ? 'rgba(24,52,72,' + (0.3 + 0.3 * (1 - far)).toFixed(2) + ')'
+      : shade('#2e4257', 1 + 0.28 * far, 1);
+    ctx.fillRect(Math.min(l.x, r2.x), top, wpx, base.y - top);
+    // 远景楼也要像楼：压暗的方格窗，避免变成一整块浅色板
+    if (!blind && wpx > 7 && s.h > 8) {
+      const cols2 = Math.max(2, Math.min(9, Math.round(wpx / 7)));
+      const rows2 = Math.max(2, Math.min(16, Math.round(s.h / 7)));
+      ctx.fillStyle = 'rgba(8,18,28,0.55)';
+      for (let rr = 0; rr < rows2; rr++) {
+        for (let cc = 0; cc < cols2; cc++) {
+          if (((rr * 7 + cc * 5 + (s.x | 0)) % 5) === 0) continue;
+          const cw = wpx / cols2 * 0.56, ch = (base.y - top) / rows2 * 0.52;
+          ctx.fillRect(Math.min(l.x, r2.x) + cc * (wpx / cols2) + (wpx / cols2 - cw) * 0.5,
+            top + rr * ((base.y - top) / rows2) + ((base.y - top) / rows2 - ch) * 0.5, cw, ch);
+        }
+      }
+    }
+  }
+
+  drawGround(blind);
+
+  const items = [];
+  for (const e of world.visible()) {
+    const d = Math.hypot(e.x - cam.x, e.z - cam.z);
+    if (d > 640) continue;
+    items.push({ e: e, d: d });
+  }
+  for (const en of enemies.list) {
+    if (en.dead) continue;
+    const d = Math.hypot(en.x - cam.x, en.z - cam.z);
+    if (d > 1200) continue;
+    items.push({ en: en, d: d });
+  }
+  items.sort((a, b) => b.d - a.d);
+  for (const it of items) {
+    if (it.en) drawEnemy(it.en, it.d, blind);
+    else if (it.e && it.e.landmark) drawLandmark(it.e, it.d, blind);
+    else drawBuilding(it.e, it.d, blind);
+  }
+
+  drawDebris();
+  drawShots();
+  drawWaves();
+  drawTexts();
+  if (tp && G.screen === 'game') drawAvatar();
+  drawSonarDisk(W, H, blind);
+  if (blind) drawBlindMask(W, H);
+  if (G.mode === 'normal') drawEchoArc(W, H);
+  if (G.flash > 0) {
+    ctx.fillStyle = 'rgba(255,247,226,' + (G.flash * 0.55).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (G.cgT > 0) drawCG(W, H);
+  if (G.screen === 'game') drawHurtOverlay(W, H);
+  drawMinimap();
+}
+function drawGround(blind) {
+  const step = 20;
+  const R = 8;
+  const cx = Math.round(cam.x / step) * step;
+  const cz = Math.round(cam.z / step) * step;
+  ctx.strokeStyle = blind ? 'rgba(80,160,200,0.10)' : 'rgba(110,140,170,0.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = -R; i <= R; i++) {
+    for (let j = -R; j < R; j++) {
+      const a1 = cam.screen(cx + i * step, 0, cz + j * step);
+      const b1 = cam.screen(cx + i * step, 0, cz + (j + 1) * step);
+      if (a1 && b1) { ctx.moveTo(a1.x, a1.y); ctx.lineTo(b1.x, b1.y); }
+      const a2 = cam.screen(cx + j * step, 0, cz + i * step);
+      const b2 = cam.screen(cx + (j + 1) * step, 0, cz + i * step);
+      if (a2 && b2) { ctx.moveTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); }
+    }
+  }
+  ctx.stroke();
+
+  const rs = world.roads(player.pos.x, player.pos.z, 320);
+  for (const rd of rs) {
+    const w = 16;
+    const segs = 10;
+    for (let s = 0; s < segs; s++) {
+      let p0, p1, p2, p3;
+      if (rd.axis === 'z') {
+        const z0 = rd.z0 + ((rd.z1 - rd.z0) * s) / segs;
+        const z1b = rd.z0 + ((rd.z1 - rd.z0) * (s + 1)) / segs;
+        p0 = cam.screen(rd.x - w / 2, 0.03, z0); p1 = cam.screen(rd.x + w / 2, 0.03, z0);
+        p3 = cam.screen(rd.x + w / 2, 0.03, z1b); p2 = cam.screen(rd.x - w / 2, 0.03, z1b);
+      } else {
+        const x0 = rd.x0 + ((rd.x1 - rd.x0) * s) / segs;
+        const x1b = rd.x0 + ((rd.x1 - rd.x0) * (s + 1)) / segs;
+        p0 = cam.screen(x0, 0.03, rd.z - w / 2); p1 = cam.screen(x0, 0.03, rd.z + w / 2);
+        p3 = cam.screen(x1b, 0.03, rd.z + w / 2); p2 = cam.screen(x1b, 0.03, rd.z - w / 2);
+      }
+      if (!p0 || !p1 || !p2 || !p3) continue;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p2.x, p2.y);
+      ctx.closePath();
+      ctx.fillStyle = blind ? 'rgba(18,46,64,0.55)' : 'rgba(58,72,90,0.62)';
+      ctx.fill();
+      if (!blind) {
+        drawCurb(rd, s, segs, w);
+        drawRoadMarks(rd, s, segs, w);
+      }
+    }
+  }
+  if (!blind) drawStreetLamps();
+}
+
+// 人行道 + 路肩：给路面加一层立体感
+function drawCurb(rd, s, segs, w) {
+  const pad = 5;
+  for (const side of [-1, 1]) {
+    let a1, a2, b1, b2;
+    if (rd.axis === 'z') {
+      const z0 = rd.z0 + ((rd.z1 - rd.z0) * s) / segs;
+      const z1b = rd.z0 + ((rd.z1 - rd.z0) * (s + 1)) / segs;
+      a1 = cam.screen(rd.x + side * w / 2, 0.02, z0);
+      a2 = cam.screen(rd.x + side * (w / 2 + pad), 0.02, z0);
+      b2 = cam.screen(rd.x + side * (w / 2 + pad), 0.02, z1b);
+      b1 = cam.screen(rd.x + side * w / 2, 0.02, z1b);
+    } else {
+      const x0 = rd.x0 + ((rd.x1 - rd.x0) * s) / segs;
+      const x1b = rd.x0 + ((rd.x1 - rd.x0) * (s + 1)) / segs;
+      a1 = cam.screen(x0, 0.02, rd.z + side * w / 2);
+      a2 = cam.screen(x0, 0.02, rd.z + side * (w / 2 + pad));
+      b2 = cam.screen(x1b, 0.02, rd.z + side * (w / 2 + pad));
+      b1 = cam.screen(x1b, 0.02, rd.z + side * w / 2);
+    }
+    if (!a1 || !a2 || !b1 || !b2) continue;
+    ctx.beginPath();
+    ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(196,204,214,0.5)';
+    ctx.fill();
+  }
+}
+// 道路中线虚线
+function drawRoadMarks(rd, s, segs, w) {
+  if (s % 2 !== 0) return;
+  let a1, a2;
+  if (rd.axis === 'z') {
+    const z0 = rd.z0 + ((rd.z1 - rd.z0) * s) / segs;
+    const z1b = rd.z0 + ((rd.z1 - rd.z0) * (s + 0.55)) / segs;
+    a1 = cam.screen(rd.x, 0.05, z0); a2 = cam.screen(rd.x, 0.05, z1b);
+  } else {
+    const x0 = rd.x0 + ((rd.x1 - rd.x0) * s) / segs;
+    const x1b = rd.x0 + ((rd.x1 - rd.x0) * (s + 0.55)) / segs;
+    a1 = cam.screen(x0, 0.05, rd.z); a2 = cam.screen(x1b, 0.05, rd.z);
+  }
+  if (!a1 || !a2) return;
+  ctx.strokeStyle = 'rgba(240,224,160,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.stroke();
+}
+
+// 街灯：沿道路两侧等距摆放，近处带一点暖光
+function drawStreetLamps() {
+  const rs = world.roads(player.pos.x, player.pos.z, 160);
+  for (const rd of rs) {
+    const span = rd.axis === 'z' ? rd.z1 - rd.z0 : rd.x1 - rd.x0;
+    const n = Math.min(14, Math.floor(span / 26));
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      for (const side of [-1, 1]) {
+        const px = rd.axis === 'z' ? rd.x + side * 11 : rd.x0 + span * t;
+        const pz = rd.axis === 'z' ? rd.z0 + span * t : rd.z + side * 11;
+        const d = Math.hypot(px - cam.x, pz - cam.z);
+        if (d < 6 || d > 150) continue;
+        const b = cam.screen(px, 0, pz), t2 = cam.screen(px, 7, pz);
+        if (!b || !t2) continue;
+        const lw = clamp(90 / d, 0.8, 3.2);
+        ctx.strokeStyle = 'rgba(70,86,104,0.85)';
+        ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(t2.x, t2.y); ctx.stroke();
+        const hr = clamp(120 / d, 1.2, 5);
+        if (d < 90) {
+          const g = ctx.createRadialGradient(t2.x, t2.y, 0, t2.x, t2.y, hr * 6);
+          g.addColorStop(0, 'rgba(255,226,150,0.28)');
+          g.addColorStop(1, 'rgba(255,226,150,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(t2.x, t2.y, hr * 6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(255,226,150,0.9)';
+        ctx.beginPath(); ctx.arc(t2.x, t2.y, hr, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+}
+
+function mixPt(a0, a1, b0, b1, u, v) {
+  const x0 = a0.x + (a1.x - a0.x) * v, y0 = a0.y + (a1.y - a0.y) * v;
+  const x1 = b0.x + (b1.x - b0.x) * v, y1 = b0.y + (b1.y - b0.y) * v;
+  return { x: x0 + (x1 - x0) * u, y: y0 + (y1 - y0) * u };
+}
+
+// 建筑：由【同等大小的方块】砌成。每个可见面按 3.2 米见方的网格铺满“方块砖”，
+// 砖块之间留缝，一眼就能看出整栋楼是一块块同样大小的方块堆出来的。
+const VOXEL = 3.2;                 // 统一方块边长（米）
+const VOXEL_GAP = 0.86;            // 砖块填充率（留缝）
+function drawBuilding(e, dist, blind) {
+  const now = performance.now() / 1000;
+  const sonarLit = e.seen && now - e.seen < CFG.sonarDuration + 0.6;
+  if (blind && !sonarLit) return;
+  const hw = e.w * 0.5, hd = e.d * 0.5;
+  const corners = [
+    [e.x - hw, e.z - hd], [e.x + hw, e.z - hd], [e.x + hw, e.z + hd], [e.x - hw, e.z + hd],
+  ];
+  const dead = e.state.destroyed;
+  const hh = dead ? Math.max(1.5, e.h * 0.1) : e.h;
+  const scr = [];
+  for (let i = 0; i < 4; i++) {
+    const b = cam.screen(corners[i][0], 0, corners[i][1]);
+    const t = cam.screen(corners[i][0], hh, corners[i][1]);
+    if (!b || !t) return;
+    scr.push({ b: b, t: t });
+  }
+  const faces = [];
+  for (let i = 0; i < 4; i++) {
+    const a = corners[i], b = corners[(i + 1) % 4];
+    const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+    if ((mx - e.x) * (cam.x - e.x) + (mz - e.z) * (cam.z - e.z) > 0) faces.push(i);
+  }
+  const base = COLORS[e.type] || COLORS.concrete;
+  const fog = blind ? 0.25 : clamp(dist / 760, 0, 1) * 0.26;
+  const lights = [0.98, 0.90, 0.78, 0.90];
+  const rows = Math.max(1, Math.round(hh / VOXEL));
+  const cols = Math.max(1, Math.round(Math.max(e.w, e.d) / VOXEL));
+  const s = (e.seed >>> 0);
+  const winCols = ['#ffe9b0', '#fff3cf', '#ffd98a', '#cfe9ff', '#bfe4ff'];
+  const darkWin = e.type === 'glass' ? '#4f86ac' : '#344e66';
+  // 远处看不清砖缝时退回整面填充，保证性能
+  const tiny = dist > 520;
+  for (const fi of faces) {
+    const a = scr[fi], b = scr[(fi + 1) % 4];
+    const k = lights[fi] * (1 - fog);
+    const wall = shadeHex(base, k);
+    if (tiny) {
+      ctx.beginPath();
+      ctx.moveTo(a.b.x, a.b.y); ctx.lineTo(a.t.x, a.t.y); ctx.lineTo(b.t.x, b.t.y); ctx.lineTo(b.b.x, b.b.y);
+      ctx.closePath();
+      ctx.fillStyle = wall;
+      ctx.fill();
+      continue;
+    }
+    // 先整面铺一层实心墙体，砖缝只露出它，不会透出天空/地面
+    ctx.fillStyle = shadeHex(base, k * 0.62);
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.moveTo(a.b.x, a.b.y); ctx.lineTo(a.t.x, a.t.y); ctx.lineTo(b.t.x, b.t.y); ctx.lineTo(b.b.x, b.b.y);
+    ctx.closePath();
+    ctx.fill();
+    // 逐块砌砖：每一行每一列都是一个大小相同的方块
+    for (let r = 0; r < rows; r++) {
+      const v0 = r / rows, v1 = (r + 1) / rows;
+      // 行与行之间错开半块（砖缝交错）
+      const off = (r % 2) * 0.5;
+      for (let c = 0; c < cols; c++) {
+        const u0 = (c + off) / cols, u1 = (c + 1 + off) / cols;
+        if (u1 > 1.04) continue;
+        // 砖块四角
+        const cu0 = clamp(u0, 0, 1), cu1 = clamp(u1, 0, 1);
+        const q0 = mixPt(a.b, a.t, b.b, b.t, cu0, v0);
+        const q1 = mixPt(a.b, a.t, b.b, b.t, cu1, v0);
+        const q2 = mixPt(a.b, a.t, b.b, b.t, cu1, v1);
+        const q3 = mixPt(a.b, a.t, b.b, b.t, cu0, v1);
+        const wpx = Math.abs(q1.x - q0.x) + Math.abs(q2.x - q1.x);
+        if (wpx < 2.4) { continue; }
+        const gapU = (1 - VOXEL_GAP) * 0.5;
+        const g0 = mixPt(a.b, a.t, b.b, b.t, clamp(cu0 + (cu1 - cu0) * gapU, 0, 1), v0 + (v1 - v0) * gapU);
+        const g1 = mixPt(a.b, a.t, b.b, b.t, clamp(cu1 - (cu1 - cu0) * gapU, 0, 1), v0 + (v1 - v0) * gapU);
+        const g2 = mixPt(a.b, a.t, b.b, b.t, clamp(cu1 - (cu1 - cu0) * gapU, 0, 1), v1 - (v1 - v0) * gapU);
+        const g3 = mixPt(a.b, a.t, b.b, b.t, clamp(cu0 + (cu1 - cu0) * gapU, 0, 1), v1 - (v1 - v0) * gapU);
+        const n = ((s >>> ((r * 7 + c * 3) % 29)) ^ (r * 131 + c * 17)) & 1023;
+        const isWin = r > 0 && r < rows - 1;
+        const lit = n < (e.type === 'glass' ? 330 : 380);
+        ctx.beginPath();
+        ctx.moveTo(g0.x, g0.y); ctx.lineTo(g1.x, g1.y); ctx.lineTo(g2.x, g2.y); ctx.lineTo(g3.x, g3.y);
+        ctx.closePath();
+        if (isWin) {
+          if (lit) {
+            ctx.fillStyle = winCols[n % winCols.length];
+            ctx.globalAlpha = Math.max(0.85, 1 - fog * 0.6);
+          } else {
+            ctx.fillStyle = darkWin;
+            ctx.globalAlpha = Math.max(0.88, 1 - fog * 0.4);
+          }
+        } else {
+          // 顶层/底层是实心砖
+          ctx.fillStyle = shadeHex(base, k * (n % 3 === 0 ? 1.05 : 0.96));
+          ctx.globalAlpha = 1;
+        }
+        ctx.fill();
+        // 砖块左上受光边：让每一块方块的体积感出来
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = shadeHex(base, Math.min(1.3, k * 1.22));
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(g0.x, g0.y); ctx.lineTo(g1.x, g1.y);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+    // 面外轮廓
+    ctx.beginPath();
+    ctx.moveTo(a.b.x, a.b.y); ctx.lineTo(a.t.x, a.t.y); ctx.lineTo(b.t.x, b.t.y); ctx.lineTo(b.b.x, b.b.y);
+    ctx.closePath();
+    ctx.strokeStyle = shadeHex(base, k * 0.70);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  // 屋顶：也是方块铺面
+  ctx.beginPath();
+  ctx.moveTo(scr[0].t.x, scr[0].t.y);
+  for (let i = 1; i < 4; i++) ctx.lineTo(scr[i].t.x, scr[i].t.y);
+  ctx.closePath();
+  ctx.fillStyle = shadeHex(base, 1.12 - fog * 0.3);
+  ctx.fill();
+  if (!dead && dist < 300 && e.type !== 'park' && e.type !== 'stone') {
+    const rc = { x: (scr[0].t.x + scr[2].t.x) / 2, y: (scr[0].t.y + scr[2].t.y) / 2 };
+    const rr = Math.abs(scr[1].t.x - scr[0].t.x) * 0.18;
+    blockAt(rc.x - rr * 0.5, rc.y - rr * 0.5, rr * 0.55, rr * 0.4, shadeHex(base, 1.05), 'rgba(30,40,52,0.4)', 0.2);
+    blockAt(rc.x + rr * 0.6, rc.y - rr * 0.3, rr * 0.35, rr * 0.3, shadeHex(base, 0.92), 'rgba(30,40,52,0.4)', 0.2);
+  }
+  if (dead) {
+    ctx.fillStyle = blind ? 'rgba(120,180,210,0.5)' : 'rgba(150,160,175,0.85)';
+    const mx = (scr[0].b.x + scr[2].b.x) / 2, my = (scr[0].b.y + scr[2].b.y) / 2;
+    const rw = Math.abs(scr[2].b.x - scr[0].b.x);
+    const rh = Math.max(2, Math.abs(scr[0].b.y - scr[0].t.y));
+    ctx.beginPath();
+    ctx.ellipse(mx, my, Math.max(2, rw / 2), rh, 0, Math.PI, 0);
+    ctx.fill();
+  }
+  if (e.landmark) {
+    const cx2 = (scr[0].t.x + scr[2].t.x) / 2;
+    const ty = Math.min(scr[0].t.y, scr[1].t.y, scr[2].t.y, scr[3].t.y);
+    ctx.strokeStyle = blind ? 'rgba(127,231,255,0.85)' : 'rgba(40,132,196,0.9)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(scr[0].t.x, scr[0].t.y);
+    for (let i = 1; i < 4; i++) ctx.lineTo(scr[i].t.x, scr[i].t.y);
+    ctx.closePath(); ctx.stroke();
+    if (dist < 600) {
+      ctx.fillStyle = blind ? 'rgba(127,231,255,0.95)' : 'rgba(22,62,92,0.92)';
+      ctx.font = '600 14px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(e.name + (e.state.destroyed ? '（已倒塌）' : ''), cx2, ty - 10);
+    }
+  }
+  if (blind) {
+    ctx.strokeStyle = 'rgba(127,231,255,0.85)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(scr[0].b.x, scr[0].b.y);
+    for (let i = 1; i < 4; i++) ctx.lineTo(scr[i].b.x, scr[i].b.y);
+    ctx.closePath(); ctx.stroke();
+  }
+}
+
+const WARM_WINDOWS = ['#ffe9b0', '#fff3cf', '#ffd98a', '#cfe9ff', '#bfe4ff'];
+function drawWindows(a, b, e, k, fog) {
+  const cols = Math.max(3, Math.min(8, Math.round((e.w + e.d) * 0.5 / 3)));
+  const rows = Math.max(3, Math.min(18, Math.round(e.h / 3.6)));
+  const s = (e.seed >>> 0);
+  const glass = e.type === 'glass';
+  const light = Math.max(0.15, 1 - (fog || 0) * 1.4);
+  const wu = 0.58 / cols, wv = 0.55 / rows;
+  for (let r = 0; r < rows; r++) {
+    const v0 = 0.07 + (r / rows) * 0.88;
+    for (let c = 0; c < cols; c++) {
+      const n = ((s >>> ((r * 7 + c * 3) % 29)) ^ (r * 131 + c * 17)) & 1023;
+      const lit = n < (glass ? 260 : 400);
+      const u0 = 0.09 + (c / cols) * 0.84;
+      const p0 = mixPt(a.b, a.t, b.b, b.t, u0, v0);
+      const p1 = mixPt(a.b, a.t, b.b, b.t, u0 + wu, v0);
+      const p3 = mixPt(a.b, a.t, b.b, b.t, u0 + wu, v0 + wv);
+      const p2 = mixPt(a.b, a.t, b.b, b.t, u0, v0 + wv);
+      if (Math.max(p0.x, p1.x, p2.x, p3.x) - Math.min(p0.x, p1.x, p2.x, p3.x) < 1.6) continue;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p2.x, p2.y);
+      ctx.closePath();
+      if (lit) {
+        ctx.fillStyle = WARM_WINDOWS[n % WARM_WINDOWS.length];
+        ctx.globalAlpha = 0.55 * light + 0.25;
+      } else {
+        ctx.fillStyle = glass ? 'rgba(120,180,220,0.45)' : 'rgba(56,92,124,0.42)';
+        ctx.globalAlpha = light;
+      }
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0)';
+}
+// 敌人：全部由方块拼装，每类有独特的方块组合与发光眼睛
+function drawEnemy(en, dist, blind) {
+  const now = performance.now() / 1000;
+  const boss = en.kind === 'boss';
+  const R = boss ? Math.max(4, en.def.size * 0.30) : Math.max(1.6, en.def.size * 0.5);
+  const Hgt = boss ? en.def.size : en.def.size * 1.8;
+  const base = cam.screen(en.x, 0, en.z);
+  const top = cam.screen(en.x, Hgt, en.z);
+  const lit = en.seen && now - en.seen < CFG.sonarDuration + 0.6;
+  if (blind && !lit) return;
+  if (!base || !top || !isFinite(base.x) || !isFinite(base.y) || !isFinite(top.y)) return;
+  const wpx = Math.max(3, Math.abs(R * 2 * base.s));
+  const hpx = Math.max(4, Math.abs(base.y - top.y));
+  const cx0 = base.x;
+  const eyeCol = en.aiming ? '#fff2b0' : (boss ? '#ff6b6b' : '#ffd166');
+  const bb = { x0: cx0 - wpx / 2, x1: cx0 + wpx / 2, y0: top.y, y1: base.y };
+  const blocks = enemyBlocks(en.id);
+  ctx.save();
+  if (blind) {
+    // 盲人模式：声纳只给方块轮廓打光
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      ctx.globalAlpha = 0.55;
+      blockAt(bb.x0 + (b.x + b.w / 2) * (bb.x1 - bb.x0), bb.y0 + (b.y + b.h / 2) * (bb.y1 - bb.y0),
+        (b.w * (bb.x1 - bb.x0)) / 2, (b.h * (bb.y1 - bb.y0)) / 2,
+        'rgba(120,210,255,0.16)', boss ? 'rgba(255,120,120,0.95)' : 'rgba(150,225,255,0.95)', 0.16);
+      ctx.globalAlpha = 1;
+    }
+    drawEnemyTags(en, boss, dist, cx0, wpx, top.y, blind);
+    ctx.restore();
+    return;
+  }
+  // 地面投影
+  ctx.fillStyle = 'rgba(20,34,50,' + (boss ? 0.20 : 0.13) + ')';
+  ctx.beginPath(); ctx.ellipse(cx0, base.y, wpx * 0.62, Math.max(2, wpx * 0.13), 0, 0, 6.2832); ctx.fill();
+  if (boss) {
+    const g = ctx.createRadialGradient(cx0, top.y + hpx * 0.4, wpx * 0.1, cx0, top.y + hpx * 0.4, wpx * 1.6 + 40);
+    g.addColorStop(0, 'rgba(40,52,70,0.30)');
+    g.addColorStop(1, 'rgba(40,52,70,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(cx0 - wpx * 1.6 - 40, top.y - 40, wpx * 3.2 + 80, hpx + 80);
+  }
+  // 方块拼装
+  blocksModel(blocks, bb, { edge: boss ? 'rgba(38,30,18,0.62)' : 'rgba(30,40,52,0.55)' });
+  // 攻击前摇：整体泛红 + 视线
+  if (en.cd < 0.5 && en.cd > 0) {
+    ctx.globalAlpha = 0.40 * (1 - en.cd / 0.5);
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      blockAt(bb.x0 + (b.x + b.w / 2) * (bb.x1 - bb.x0), bb.y0 + (b.y + b.h / 2) * (bb.y1 - bb.y0),
+        (b.w * (bb.x1 - bb.x0)) / 2, (b.h * (bb.y1 - bb.y0)) / 2, '#ff4a4a', null, 0.12);
+    }
+    ctx.globalAlpha = 1;
+    const eyeY = top.y + hpx * (boss ? 0.16 : 0.22);
+    const pl = cam.screen(player.pos.x, player.pos.y + 1, player.pos.z);
+    if (pl) {
+      ctx.strokeStyle = 'rgba(255,90,90,' + (0.25 + 0.5 * (1 - en.cd / 0.5)).toFixed(2) + ')';
+      ctx.lineWidth = boss ? 2.2 : 1;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.moveTo(cx0, eyeY); ctx.lineTo(pl.x, pl.y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  if (en.hit > 0) {
+    ctx.globalAlpha = Math.min(0.8, en.hit * 3.0);
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      blockAt(bb.x0 + (b.x + b.w / 2) * (bb.x1 - bb.x0), bb.y0 + (b.y + b.h / 2) * (bb.y1 - bb.y0),
+        (b.w * (bb.x1 - bb.x0)) / 2, (b.h * (bb.y1 - bb.y0)) / 2, '#ffffff', null, 0.12);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 发光方块眼睛
+  const eyeW = Math.max(2, wpx * (boss ? 0.06 : 0.045));
+  const eyeH = Math.max(2, hpx * (boss ? 0.030 : 0.035));
+  const eyeY = top.y + hpx * (boss ? 0.10 : 0.06);
+  ctx.shadowColor = eyeCol;
+  ctx.shadowBlur = Math.min(26, 6 + wpx * 0.1);
+  ctx.fillStyle = eyeCol;
+  if (en.id === 'worm') {
+    for (let i = 0; i < 3; i++) ctx.fillRect(cx0 - eyeW * 2 + i * eyeW * 2, eyeY + (i % 2) * eyeH * 1.6, eyeW, eyeH);
+  } else if (en.id === 'centipede') {
+    for (let i = 0; i < 5; i++) ctx.fillRect(cx0 - wpx * 0.30 + i * wpx * 0.14, eyeY + 0.30 * hpx - (i % 2) * eyeH, eyeW, eyeH);
+  } else if (en.id === 'star') {
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * 6.2832;
+      ctx.fillRect(cx0 + Math.cos(a) * wpx * 0.22 - eyeW / 2, top.y + hpx / 2 + Math.sin(a) * hpx * 0.22 - eyeH / 2, eyeW, eyeH);
+    }
+  } else if (en.id === 'drone') {
+    ctx.fillRect(cx0 - eyeW / 2, top.y + hpx * 0.52, eyeW * 1.6, eyeH * 1.4);
+  } else {
+    ctx.fillRect(cx0 - eyeW * 2.2, eyeY, eyeW, eyeH);
+    ctx.fillRect(cx0 + eyeW * 1.2, eyeY, eyeW, eyeH);
+  }
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  drawEnemyTags(en, boss, dist, cx0, wpx, top.y, blind);
+}
+// 地标：整体由 3D 方块搭起来，再叠一层地面基座与碰撞框
+function drawLandmark(e, dist, blind) {
+  const now = performance.now() / 1000;
+  const sonarLit = e.seen && now - e.seen < CFG.sonarDuration + 0.6;
+  if (blind && !sonarLit) return;
+  const dead = e.state.destroyed;
+  // 地面基座（方块铺成）
+  const bb = cam.screen(e.x, 0, e.z);
+  if (!bb) return;
+  const pl = cam.screen(e.x - e.w / 2, 0, e.z);
+  const pr = cam.screen(e.x + e.w / 2, 0, e.z);
+  const rw = Math.max(6, Math.abs((pl ? pl.x : bb.x) - (pr ? pr.x : bb.x)) / 2);
+  ctx.fillStyle = blind ? 'rgba(90,150,190,0.18)' : 'rgba(150,164,182,0.55)';
+  ctx.beginPath(); ctx.ellipse(bb.x, bb.y, Math.max(8, rw), Math.max(3, rw * 0.34), 0, 0, 6.2832); ctx.fill();
+  if (!dead) drawLandmarkBlocks(e, dist, blind);
+  else {
+    // 倒塌：只剩散落的矮方块
+    for (let i = 0; i < 7; i++) {
+      const dx = ((i * 37) % 40) - 20, dz = ((i * 53) % 40) - 20;
+      drawVoxel(e.x + dx, 0, e.z + dz, 7 + (i % 3) * 3, 3 + (i % 2) * 3, 7, shadeHex('#b7b0a2', 1.14), shadeHex('#b7b0a2', 0.82), shadeHex('#b7b0a2', 0.96), 'rgba(20,30,44,0.45)');
+    }
+  }
+  // 名字与碰撞框
+  const top = cam.screen(e.x, e.h * (dead ? 0.12 : 1), e.z);
+  ctx.textAlign = 'center';
+  if (dist < 620) {
+    const ty = top ? top.y : bb.y;
+    ctx.fillStyle = blind ? 'rgba(127,231,255,0.95)' : 'rgba(22,62,92,0.92)';
+    ctx.font = '600 14px system-ui, -apple-system, sans-serif';
+    ctx.fillText((e.name || '地标') + (dead ? '（已倒塌）' : ''), bb.x, ty - 12);
+  }
+  ctx.textAlign = 'left';
+  if (blind) {
+    ctx.strokeStyle = 'rgba(127,231,255,0.85)';
+    ctx.lineWidth = 1.4;
+    const w2 = Math.max(10, rw * 2);
+    ctx.beginPath(); ctx.rect(bb.x - w2 / 2, (top ? top.y : bb.y) - 4, w2, (top ? bb.y - top.y : 6) + 8); ctx.stroke();
+  }
+}
+// ================= 方块拼装系统 =================
+// 建筑、地标、小怪、Boss 全部由同一套“体素/积木”绘制出来：
+// 1) 屏幕上拼装：每个方块是位置 + 边长 + 颜色 + 明暗面
+// 2) 模型拼装：在归一化坐标 u[0..1]、v[0..1]（0=顶 1=底）里定义方块清单，再映射到屏幕包围盒
+// 3) 世界拼装：真实 3D 方块，投影后按深度排序绘制（地标、巨物、建筑骨架）
+// 方块一律“左亮 / 正亮 / 右暗”，并描同色系的深色边，保证一眼能看出是方块堆出来的。
+
+function shadeHex(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = clamp(Math.round(((n >> 16) & 255) * k), 0, 255);
+  const g = clamp(Math.round(((n >> 8) & 255) * k), 0, 255);
+  const b = clamp(Math.round((n & 255) * k), 0, 255);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+// 屏幕空间方块：以 (cx,cy) 为中心、半宽 w、半高 h，skew 让侧面看起来有厚度
+function blockAt(cx, cy, w, h, hex, edge, skew) {
+  if (w <= 0.3 || h <= 0.3) return;
+  const k = skew === undefined ? 0.18 : skew;
+  const sw = w * k, sh = h * k * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(cx - w, cy - h); ctx.lineTo(cx + w, cy - h);
+  ctx.lineTo(cx + w, cy + h); ctx.lineTo(cx - w, cy + h);
+  ctx.closePath();
+  ctx.fillStyle = hex;
+  ctx.fill();
+  if (sw > 0.8) {
+    ctx.beginPath();
+    ctx.moveTo(cx + w, cy - h); ctx.lineTo(cx + w + sw, cy - h - sh);
+    ctx.lineTo(cx + w + sw, cy + h - sh); ctx.lineTo(cx + w, cy + h);
+    ctx.closePath();
+    ctx.fillStyle = shadeHex(hex, 0.76);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - w, cy - h); ctx.lineTo(cx + w, cy - h);
+    ctx.lineTo(cx + w + sw, cy - h - sh); ctx.lineTo(cx - w + sw, cy - h - sh);
+    ctx.closePath();
+    ctx.fillStyle = shadeHex(hex, 1.16);
+    ctx.fill();
+  }
+  if (edge && w > 2.2) {
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = Math.max(0.6, Math.min(1.6, w * 0.05));
+    ctx.stroke();
+  }
+}
+
+// 规整的“网格方块”：内部留缝，堆砌感更像积木
+function brickAt(cx, cy, w, h, hex, edge, gap) {
+  const g = gap === undefined ? 0.12 : gap;
+  blockAt(cx, cy, Math.max(0.4, w * (1 - g)), Math.max(0.4, h * (1 - g)), hex, edge, 0.14);
+}
+
+// 归一化方块绘制：u/v 在 [0..1] 内，自动映射到包围盒
+function blocksModel(list, bb, opt) {
+  const w = bb.x1 - bb.x0, h = bb.y1 - bb.y0;
+  const o = opt || {};
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    if (b.axis === 'h') ctx.fillRect(bb.x0 + b.x * w, bb.y0 + b.y * h, b.w * w, b.h * h);
+    else blockAt(bb.x0 + (b.x + b.w / 2) * w, bb.y0 + (b.y + b.h / 2) * h, (b.w * w) / 2, (b.h * h) / 2, b.c, b.e || o.edge, b.k);
+  }
+}
+
+// ---------------- 敌人方块模型 ----------------
+// u：0=左 1=右；v：0=顶 1=底。每类怪物的“辨识度”都来自方块组合：
+// 石像=巨大头肩、蜈蚣=多节方块蜿蜒、蠕虫=螺旋方块、巨影=方块人形、巨械=方块机甲、
+// 飞碟/要塞=扁平方块叠层、恒星=方块十字星芒、气球=方块吊篮、侦查机=三角机翼、无人机=十字旋翼。
+const TORSO = '#8f9fb2', TORSO_D = '#6d7d92';
+function enemyBlocks(id) {
+  const B = [];
+  const add = (x, y, w, h, c, e) => B.push({ x, y, w, h, c, e });
+  if (id === 'stone') {
+    // 巨型石像：巨型头 + 宽肩 + 胸甲 + 两条柱子腿 + 拳头
+    add(0.34, 0.02, 0.32, 0.22, '#b9b2a4');            // 头
+    add(0.30, 0.05, 0.06, 0.08, '#8d8578');            // 右眼窝
+    add(0.64, 0.05, 0.06, 0.08, '#8d8578');            // 左眼窝
+    add(0.18, 0.24, 0.64, 0.14, '#a8a294');            // 肩
+    add(0.28, 0.38, 0.44, 0.30, '#9a9488');            // 胸
+    add(0.06, 0.26, 0.16, 0.34, '#a19a8d');            // 右臂
+    add(0.78, 0.26, 0.16, 0.34, '#a19a8d');            // 左臂
+    add(0.04, 0.58, 0.20, 0.14, '#8e887c');            // 右拳
+    add(0.76, 0.58, 0.20, 0.14, '#8e887c');            // 左拳
+    add(0.30, 0.68, 0.17, 0.32, '#9c9589');            // 右腿
+    add(0.53, 0.68, 0.17, 0.32, '#9c9589');            // 左腿
+    return B;
+  }
+  if (id === 'centipede') {
+    // 百足巨虫：12 节方块沿正弦曲线排开，节间露出空隙
+    for (let i = 0; i < 12; i++) {
+      const t = i / 11;
+      const u = 0.02 + t * 0.96;
+      const v = 0.46 + Math.sin(t * 8.2) * 0.20;
+      const s = 0.10 + (i < 3 ? 0.05 : 0);
+      add(u - s / 2, v - s * 0.7, s, s * 1.4, i % 2 ? '#7f8f4f' : '#8f9f57');
+    }
+    for (let i = 0; i < 12; i += 2) {
+      const t = i / 11;
+      const u = 0.02 + t * 0.96;
+      const v = 0.46 + Math.sin(t * 8.2) * 0.20;
+      add(u - 0.012, v + 0.10, 0.024, 0.14, '#5f6b3a');
+    }
+    add(0.86, 0.34, 0.12, 0.16, '#6f7f45');
+    return B;
+  }
+  if (id === 'worm') {
+    // 钻地蠕虫：一条向上的方块螺旋 + 大口
+    for (let i = 0; i < 14; i++) {
+      const t = i / 13;
+      const u = 0.5 + Math.sin(t * 6.8) * 0.26;
+      const v = 0.98 - t * 0.84;
+      add(u - 0.075, v - 0.05, 0.15, 0.10, i % 2 ? '#a87a9a' : '#b98aa9');
+    }
+    add(0.36, 0.06, 0.28, 0.20, '#c79ab8');              // 头
+    add(0.41, 0.12, 0.18, 0.11, '#3a2233');              // 大口
+    return B;
+  }
+  if (id === 'titan') {
+    // 无脸巨影：方块人形，头是整块空白方块
+    add(0.40, 0.0, 0.20, 0.14, '#6f7f96');
+    add(0.22, 0.14, 0.56, 0.12, '#7a8aa2');
+    add(0.30, 0.26, 0.40, 0.36, '#8494ab');
+    add(0.10, 0.16, 0.12, 0.46, '#7a8aa2');
+    add(0.78, 0.16, 0.12, 0.46, '#7a8aa2');
+    add(0.32, 0.62, 0.15, 0.36, '#6b7b92');
+    add(0.53, 0.62, 0.15, 0.36, '#6b7b92');
+    add(0.42, 0.44, 0.16, 0.08, '#4d5b70');
+    return B;
+  }
+  if (id === 'mec') {
+    // 装甲巨械：方块机甲，肩甲/胸甲/双臂/双腿
+    add(0.42, 0.02, 0.16, 0.12, '#8fa3b8');
+    add(0.14, 0.14, 0.22, 0.14, '#6fa8d0');              // 右肩装甲
+    add(0.64, 0.14, 0.22, 0.14, '#6fa8d0');              // 左肩装甲
+    add(0.34, 0.16, 0.32, 0.30, '#a9bccd');              // 胸
+    add(0.42, 0.22, 0.16, 0.10, '#2b3d4f');              // 驾驶舱
+    add(0.06, 0.20, 0.14, 0.42, '#93a9bd');              // 右臂
+    add(0.80, 0.20, 0.14, 0.42, '#93a9bd');              // 左臂
+    add(0.04, 0.58, 0.18, 0.10, '#cf7a5a');              // 右炮
+    add(0.78, 0.58, 0.18, 0.10, '#cf7a5a');              // 左炮
+    add(0.32, 0.48, 0.15, 0.50, '#8fa3b8');
+    add(0.53, 0.48, 0.15, 0.50, '#8fa3b8');
+    return B;
+  }
+  if (id === 'saucer') {
+    // 碟形无人机：扁平方块叠层 + 底部光束
+    add(0.30, 0.24, 0.40, 0.20, '#b9c6d6');              // 驾驶舱
+    add(0.36, 0.28, 0.12, 0.06, '#7fd0ff');
+    add(0.02, 0.44, 0.96, 0.12, '#9fb4c9');              // 大碟
+    add(0.18, 0.56, 0.64, 0.10, '#8aa0b6');              // 下碟
+    add(0.44, 0.66, 0.12, 0.16, '#7fd0ff');              // 光束
+    return B;
+  }
+  if (id === 'fortress') {
+    // 空中要塞：方块船体 + 两侧炮台 + 底座
+    add(0.06, 0.30, 0.88, 0.16, '#8fa2b8');              // 主船体
+    add(0.02, 0.46, 0.96, 0.10, '#7e92a8');              // 裙板
+    add(0.36, 0.10, 0.28, 0.20, '#a6b8ca');              // 舰桥
+    add(0.42, 0.14, 0.16, 0.08, '#ffd166');
+    add(0.10, 0.14, 0.14, 0.14, '#cf7a5a');              // 左炮台
+    add(0.76, 0.14, 0.14, 0.14, '#cf7a5a');              // 右炮台
+    add(0.22, 0.56, 0.12, 0.36, '#788ca2');
+    add(0.66, 0.56, 0.12, 0.36, '#788ca2');
+    add(0.42, 0.56, 0.16, 0.28, '#8aa0b6');
+    return B;
+  }
+  if (id === 'star') {
+    // 恒星回声：方块十字星芒 + 核心
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const len = i % 2 ? 0.26 : 0.40;
+      const cx = 0.5 + Math.cos(a) * len * 0.5;
+      const cy = 0.5 + Math.sin(a) * len * 0.5;
+      const s = i % 2 ? 0.09 : 0.13;
+      add(cx - s / 2, cy - s / 2, s, s, i % 2 ? '#ffd98a' : '#ffb84d');
+    }
+    add(0.34, 0.34, 0.32, 0.32, '#fff0c2');
+    add(0.40, 0.40, 0.20, 0.20, '#ff8a3d');
+    return B;
+  }
+  if (id === 'balloon') {
+    // 浮空气球怪：方块气囊 + 吊篮 + 吊索
+    add(0.20, 0.02, 0.60, 0.10, '#c9b6c9');
+    add(0.10, 0.12, 0.80, 0.12, '#d9c4d9');
+    add(0.14, 0.24, 0.72, 0.12, '#cbb4cb');
+    add(0.20, 0.36, 0.60, 0.08, '#b9a2b9');
+    add(0.46, 0.44, 0.08, 0.18, '#7d6b7d');              // 吊索
+    add(0.32, 0.62, 0.36, 0.22, '#a8825a');              // 吊篮
+    add(0.38, 0.66, 0.10, 0.06, '#ffd166');
+    return B;
+  }
+  if (id === 'scout') {
+    // 飞行侦查机：三角机翼 + 尾翼
+    for (let i = 0; i < 6; i++) {
+      const t = i / 5;
+      add(0.5 - 0.36 + t * 0.005, 0.30 + t * 0.30, 0.02 + t * 0.72, 0.06, '#a9bcc9');
+    }
+    add(0.42, 0.12, 0.16, 0.20, '#cfdbe6');
+    add(0.44, 0.16, 0.12, 0.06, '#7fd0ff');
+    add(0.36, 0.70, 0.28, 0.06, '#8fa3b8');
+    add(0.46, 0.62, 0.08, 0.10, '#cf7a5a');
+    return B;
+  }
+  if (id === 'drone') {
+    // 无人机：十字四旋翼 + 机身 + 摄像头
+    add(0.38, 0.36, 0.24, 0.28, '#93a3b8');
+    add(0.02, 0.06, 0.30, 0.06, '#7f8ea3');
+    add(0.68, 0.06, 0.30, 0.06, '#7f8ea3');
+    add(0.02, 0.86, 0.30, 0.06, '#7f8ea3');
+    add(0.68, 0.86, 0.30, 0.06, '#7f8ea3');
+    add(0.08, 0.12, 0.18, 0.05, '#b9c6d6');
+    add(0.74, 0.12, 0.18, 0.05, '#b9c6d6');
+    add(0.08, 0.92, 0.18, 0.05, '#b9c6d6');
+    add(0.74, 0.92, 0.18, 0.05, '#b9c6d6');
+    add(0.44, 0.40, 0.12, 0.10, '#ffd166');
+    return B;
+  }
+  // 巡逻兵：方块小人（头/躯干/双臂/双腿）
+  add(0.38, 0.02, 0.24, 0.18, TORSO);
+  add(0.40, 0.08, 0.08, 0.06, '#3b4a5c');
+  add(0.52, 0.08, 0.08, 0.06, '#3b4a5c');
+  add(0.32, 0.22, 0.36, 0.34, TORSO_D);
+  add(0.18, 0.24, 0.12, 0.30, TORSO);
+  add(0.70, 0.24, 0.12, 0.30, TORSO);
+  add(0.36, 0.58, 0.12, 0.38, '#5d6c80');
+  add(0.52, 0.58, 0.12, 0.38, '#5d6c80');
+  return B;
+}
+
+// ---------------- 世界空间方块（真实 3D 立方体） ----------------
+// 直接投影并绘制一个轴对齐立方体（不做深度排序，用于单体模型内部）
+function drawVoxel(cx, y, cz, w, h, d, top, side, front, edge) {
+  const hw = w / 2, hd = d / 2, y1 = y + h;
+  const f0 = cam.screen(cx - hw, y, cz + hd), f1 = cam.screen(cx + hw, y, cz + hd);
+  const f2 = cam.screen(cx + hw, y1, cz + hd), f3 = cam.screen(cx - hw, y1, cz + hd);
+  const t0 = cam.screen(cx - hw, y1, cz - hd), t1 = cam.screen(cx + hw, y1, cz - hd);
+  const s1 = cam.screen(cx + hw, y, cz - hd), s2 = cam.screen(cx + hw, y1, cz - hd);
+  if (!f0 || !f1 || !f2 || !f3 || !t0 || !t1 || !s1 || !s2) return;
+  const poly = (pts, fill) => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = 0.9; ctx.stroke(); }
+  };
+  poly([t0, t1, f2, f3], top);
+  poly([f1, s1, s2, f2], side);
+  poly([f0, f1, f2, f3], front);
+}
+
+// 地标：全部用【同一尺寸】的标准立方体堆起来（VOXEL 见上），不再出现超大平面
+function landmarkBlockList(e) {
+  const out = [];
+  const S = 3.2;   // 与建筑同一个方块尺寸
+  const put = (dx, y, dz, w, h, d, c) => out.push({ cx: e.x + dx, y: y, cz: e.z + dz, w: w, h: h, d: d, c: c });
+  // 按“标准立方体”填充一个区域：横向/纵向都按 S 分格，逐格偏移抖动，看起来是散块堆砌
+  const fill = (dx, y, dz, w, h, d, c, jitter) => {
+    const nx = Math.max(1, Math.round(w / S)), ny = Math.max(1, Math.round(h / S)), nz = Math.max(1, Math.round(d / S));
+    const sw = w / nx, sd = d / nz, sh = h / ny;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
+      const skip = jitter && (((i * 7 + j * 13 + k * 3) % 11) === 0) && j > 0;
+      if (skip) continue;
+      const ox = jitter ? ((i % 2) - 0.5) * sw * 0.10 : 0;
+      const oz = jitter ? ((k % 2) - 0.5) * sd * 0.10 : 0;
+      put(dx - w / 2 + sw * (i + 0.5) + ox, y + sh * j, dz - d / 2 + sd * (k + 0.5) + oz, sw, sh, sd, c);
+    }
+  };
+  const id = e.landmark || '';
+  if (id === 'eiffel') {
+    let w = 30;
+    for (let i = 0; i < 10; i++) { fill(0, i * 12, 0, w, 11, w, i % 2 ? '#a6805f' : '#b98c68', false); w *= 0.86; }
+    fill(0, 120, 0, 4, 16, 4, '#d9b06a', false);
+    return out;
+  }
+  if (id === 'pisa') {
+    for (let i = 0; i < 12; i++) fill(i * 0.9, i * 5.4, 0, 10, 5, 10, i % 2 ? '#e6e1d8' : '#d3cdc2', false);
+    return out;
+  }
+  if (id === 'liberty') {
+    fill(0, 0, 0, 18, 10, 18, '#7f8c8d', false);
+    fill(0, 10, 0, 14, 22, 14, '#79a3a0', true);
+    fill(0, 32, 0, 9, 14, 9, '#79a3a0', false);
+    fill(0, 46, 0, 6, 8, 6, '#8fb9b5', false);
+    fill(3, 54, 0, 3, 12, 3, '#d8c48b', false);
+    fill(3, 66, 0, 4, 4, 4, '#ffd166', false);
+    return out;
+  }
+  if (id === 'wall') {
+    for (let i = 0; i < 24; i++) {
+      const zz = -130 + i * 11;
+      const xx = Math.sin(i * 0.38) * 26;
+      fill(xx, 0, zz, 16, 12, 10, i % 3 ? '#a89a86' : '#b4a691', true);
+      if (i % 5 === 2) fill(xx, 12, zz, 11, 12, 8, '#8f8272', false);
+    }
+    return out;
+  }
+  if (id === 'garden') {
+    fill(0, 4, 0, 64, 8, 64, '#8fa36f', false);
+    fill(0, 12, 0, 52, 8, 52, '#7fa35f', false);
+    fill(0, 20, 0, 40, 8, 40, '#6f9a4f', false);
+    fill(0, 28, 0, 28, 8, 28, '#5f8a3f', false);
+    fill(0, 36, 0, 16, 10, 16, '#d9c48b', false);
+    return out;
+  }
+  if (id === 'manor') {
+    // 大庄园：主楼 + 两翼 + 塔楼，全部标准方块
+    fill(0, 0, 0, 70, 21, 46, '#d8c3a4', false);
+    fill(0, 21, 0, 74, 3, 50, '#a8906f', false);
+    fill(-28, 24, 0, 16, 15, 16, '#c2ac8e', false);
+    fill(33, 0, 0, 20, 18, 36, '#cdb79a', false);
+    fill(0, 24, -12, 44, 6, 24, '#8f7a62', false);
+    fill(-18, 6, 24, 4, 22, 4, '#e6d6bd', false);
+    fill(18, 6, 24, 4, 22, 4, '#e6d6bd', false);
+    return out;
+  }
+  if (id === 'windmill') {
+    fill(0, 0, 0, 18, 36, 18, '#e8dcc4', false);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const bx = Math.cos(a) * 13, by = 36 + Math.sin(a) * 13;
+      for (let s2 = 0; s2 < 5; s2++) fill(bx + Math.cos(a) * s2 * 4, by + Math.sin(a) * s2 * 4, 0, 4, 4, 3, '#efe6d2', false);
+    }
+    return out;
+  }
+  if (id === 'bell') {
+    for (let i = 0; i < 12; i++) fill(0, i * 8, 0, 14, 8, 14, i % 2 ? '#a8d6e8' : '#8fc4dc', false);
+    return out;
+  }
+  if (id === 'dam') {
+    fill(0, 0, 0, 152, 60, 26, '#cfd6de', false);
+    return out;
+  }
+  if (id === 'bridge') {
+    for (let i = -2; i <= 2; i++) fill(i * 33, 0, 0, 10, 45, 10, '#b8bec6', false);
+    fill(0, 45, 0, 170, 6, 18, '#cfd6de', false);
+    return out;
+  }
+  if (id === 'observatory') {
+    fill(0, 0, 0, 34, 16, 34, '#d6dde6', false);
+    fill(0, 16, 0, 22, 12, 22, '#c3ccd8', false);
+    fill(0, 28, 0, 12, 9, 12, '#e8eef6', false);
+    return out;
+  }
+  if (id === 'pyramid') {
+    for (let i = 0; i < 9; i++) fill(0, 63 - i * 7, 0, 8 + i * 7, 7, 8 + i * 7, i % 2 ? '#c7b28c' : '#d6c29b', false);
+    return out;
+  }
+  fill(0, 0, 0, 30, 30, 30, '#c3ccd8', false);
+  return out;
+}
+// 地标：按方块排序绘制（远到近）
+function drawLandmarkBlocks(e, dist, blind) {
+  const list = landmarkBlockList(e);
+  const items = [];
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    const c = cam.screen(b.cx, b.y + b.h / 2, b.cz);
+    if (!c) continue;
+    const depth = Math.hypot(b.cx - cam.x, b.cz - cam.z);
+    items.push({ b: b, depth: depth });
+  }
+  items.sort((p, q) => q.depth - p.depth);
+  for (let i = 0; i < items.length; i++) {
+    const b = items[i].b;
+    drawVoxel(b.cx, b.y, b.cz, b.w, b.h, b.d, shadeHex(b.c, 1.14), shadeHex(b.c, 0.82), shadeHex(b.c, 0.96), 'rgba(20,30,44,0.45)');
+  }
+}
+function drawEnemyTags(en, boss, dist, cx0, wpx, topY, blind) {
+  if (!(boss || dist < 300)) return;
+  const bw = clamp(wpx * 2.4, 46, 220);
+  const by = topY - 10;
+  ctx.fillStyle = 'rgba(4,10,16,0.5)';
+  ctx.fillRect(cx0 - bw / 2, by, bw, 5);
+  ctx.fillStyle = boss ? '#ff6b6b' : '#ffd166';
+  const ratio = clamp(en.hp / (en.maxHp || en.hp || 1), 0, 1);
+  ctx.fillRect(cx0 - bw / 2, by, bw * ratio, 5);
+  ctx.font = '11px "Microsoft YaHei", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = blind ? 'rgba(200,235,255,0.92)' : 'rgba(228,240,252,0.92)';
+  ctx.fillText(en.def.name + (boss ? ' · ' + en.def.size + ' 米' : ''), cx0, by - 5);
+  ctx.textAlign = 'left';
+}
+
+function drawDebris() {
+  for (const d of G.debris) {
+    const p = cam.screen(d.x, d.y, d.z);
+    if (!p) continue;
+    const s = Math.max(1.5, (p.s * d.sx) / Math.max(1, p.z));
+    ctx.globalAlpha = clamp((d.life - d.age) / 4, 0, 1);
+    ctx.fillStyle = d.color;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(d.rot);
+    ctx.fillRect(-s, -s * 0.7, s * 2, s * 1.4);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawShots() {
+  // 先画地上的红色落点预警圈（攻击明显化）
+  for (const s of enemies.shots) {
+    if (s.boom > 0) continue;
+    const k = clamp(s.t / s.life, 0, 1);
+    const rad = s.boss ? 13 : 7;
+    const pulse = 0.35 + 0.3 * Math.sin(k * 26);
+    ctx.strokeStyle = 'rgba(255,46,60,' + (0.65 + pulse * 0.35).toFixed(2) + ')';
+    ctx.lineWidth = 2.5 + k * 2;
+    groundCircle(s.x1, s.z1, rad * 1.02, 0.55);
+    ctx.save();
+    ctx.globalAlpha = 0.12 + k * 0.14;
+    ctx.fillStyle = '#ff2e3c';
+    groundCircle(s.x1, s.z1, rad * 1.02, 0.55);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,220,140,' + (0.40 + k * 0.5).toFixed(2) + ')';
+    ctx.lineWidth = 1.6;
+    groundCircle(s.x1, s.z1, rad * k * 0.96, 0.05);
+  }
+  for (const s of enemies.shots) {
+    if (s.boom > 0) {
+      // 落地爆炸：地面冲击环 + 中心火球
+      const kb = 1 - s.boom / (s.boss ? 0.6 : 0.32);
+      const rad = s.boss ? 13 : 7;
+      const p0 = cam.screen(s.x1, 0.5, s.z1);
+      if (p0) {
+        const rr = (p0.s * rad * (0.6 + kb * 1.6)) / Math.max(1, p0.z);
+        const g2 = ctx.createRadialGradient(p0.x, p0.y, 2, p0.x, p0.y, Math.max(6, rr));
+        g2.addColorStop(0, 'rgba(255,240,190,' + (1 - kb).toFixed(2) + ')');
+        g2.addColorStop(0.4, 'rgba(255,150,60,' + (0.8 * (1 - kb)).toFixed(2) + ')');
+        g2.addColorStop(1, 'rgba(255,60,40,0)');
+        ctx.fillStyle = g2;
+        ctx.beginPath(); ctx.arc(p0.x, p0.y, Math.max(6, rr), 0, 6.2832); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,120,90,' + (0.85 * (1 - kb)).toFixed(2) + ')';
+        ctx.lineWidth = 3;
+        groundCircle(s.x1, s.z1, rad * (0.5 + kb * 2.4), 0.2);
+      }
+      continue;
+    }
+    const k = clamp(s.t / s.life, 0, 1);
+    const x = s.x0 + (s.x1 - s.x0) * k;
+    const y = s.y0 + (s.y1 - s.y0) * k + Math.sin(k * Math.PI) * 14;
+    const z = s.z0 + (s.z1 - s.z0) * k;
+    const p = cam.screen(x, y, z);
+    // 弹道拖尾
+    const pt = cam.screen(s.x0 + (s.x1 - s.x0) * Math.max(0, k - 0.22),
+      s.y0 + (s.y1 - s.y0) * Math.max(0, k - 0.22) + Math.sin(Math.max(0, k - 0.22) * Math.PI) * 14,
+      s.z0 + (s.z1 - s.z0) * Math.max(0, k - 0.22));
+    if (p && pt) {
+      ctx.strokeStyle = s.boss ? 'rgba(255,90,90,0.75)' : 'rgba(255,200,110,0.75)';
+      ctx.lineWidth = Math.max(2, (p.s * s.r * 0.9) / Math.max(1, p.z));
+      ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    }
+    if (!p) continue;
+    const rr = Math.max(3, (p.s * s.r) / Math.max(1, p.z));
+    ctx.fillStyle = s.boss ? 'rgba(255,90,90,0.32)' : 'rgba(255,200,110,0.32)';
+    ctx.beginPath(); ctx.arc(p.x, p.y, rr * 3.4, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(p.x, p.y, rr * 1.35, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = s.boss ? '#ff5a5a' : '#ffd78a';
+    ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, 6.2832); ctx.fill();
+  }
+  // 敌人前摇：头顶亮起攻击警告 + 脚下蓄能圈
+  for (const e of enemies.list) {
+    if (!e.aiming || e.dead) continue;
+    const p = cam.screen(e.x, e.def.size * (e.kind === 'boss' ? 0.6 : 1.4), e.z);
+    if (!p) continue;
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 90);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#ff3b4e';
+    ctx.font = 'bold 26px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', p.x, p.y);
+    ctx.globalAlpha = 1;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,120,120,0.9)';
+    ctx.fillText('攻击预警', p.x, p.y - 20);
+  }
+}
+
+const WAVE_COLORS = ['255,224,168', '255,220,150', '255,196,124', '255,158,96', '255,124,120', '255,96,150'];
+
+function drawWaves() {
+  for (const w of G.waves) {
+    const k = clamp(w.t / w.life, 0, 1);
+    const c = WAVE_COLORS[w.tier];
+    const a = (1 - k) * 0.85;
+    ctx.strokeStyle = 'rgba(' + c + ',' + a.toFixed(3) + ')';
+    ctx.lineWidth = 1.6 + w.tier * 1.2;
+    groundCircle(w.x, w.z, w.r, 0.35 + w.tier * 0.25);
+    if (w.tier >= 3) {
+      ctx.strokeStyle = 'rgba(' + c + ',' + (a * 0.45).toFixed(3) + ')';
+      ctx.lineWidth = 1;
+      groundCircle(w.x, w.z, w.r * 0.72, 1.5 + w.tier * 1.2);
+    }
+  }
+  for (const r of G.rings) {
+    if (r.type !== 'sonar') continue;
+    const k = clamp(r.t / r.life, 0, 1);
+    ctx.strokeStyle = 'rgba(127,231,255,' + ((1 - k) * 0.8).toFixed(3) + ')';
+    ctx.lineWidth = 1.8;
+    groundCircle(r.x, r.z, r.r, 0.3);
+  }
+}
+
+function groundCircle(cx0, cz0, r, y) {
+  const N = 56;
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const p = cam.screen(cx0 + Math.cos(a) * r, y, cz0 + Math.sin(a) * r);
+    if (!p) { started = false; continue; }
+    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+}
+
+function drawTexts() {
+  for (const t of G.texts) {
+    const p = cam.screen(t.x, t.y, t.z);
+    if (!p) continue;
+    ctx.globalAlpha = clamp(t.life, 0, 1);
+    ctx.font = '700 18px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.strokeText(t.text, p.x, p.y);
+    ctx.fillStyle = t.tier >= 4 ? '#ffc0c0' : '#ffe8c0';
+    ctx.fillText(t.text, p.x, p.y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawAvatar() {
+  const p = cam.screen(player.pos.x, player.pos.y + 0.9, player.pos.z);
+  if (!p) return;
+  const h = clamp((p.s * 1.9) / Math.max(1, p.z), 26, 340);
+  const x = p.x, y = p.y;
+  const k = player.charging ? (player.tier + 1) / 6 : 0;
+  if (player.charging) {
+    for (let i = 0; i < 3; i++) {
+      const tt = ((performance.now() / 1000 * 1.3 + i * 0.34) % 1);
+      ctx.strokeStyle = 'rgba(255,190,90,' + ((1 - tt) * (0.25 + k * 0.65)).toFixed(2) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y - h * 0.06, h * (0.25 + tt * (0.5 + k * 1.4)), 0, 6.2832);
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.beginPath(); ctx.ellipse(x, y + h * 0.52, h * 0.32, h * 0.1, 0, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = '#2b3350';
+  ctx.fillRect(x - h * 0.17, y + h * 0.08, h * 0.14, h * 0.44);
+  ctx.fillRect(x + h * 0.03, y + h * 0.08, h * 0.14, h * 0.44);
+  ctx.fillStyle = '#f4f7fb';
+  ctx.fillRect(x - h * 0.22, y - h * 0.26, h * 0.44, h * 0.4);
+  ctx.fillStyle = player.charging ? 'rgba(255,168,72,' + (0.55 + k * 0.45).toFixed(2) + ')' : 'rgba(255,196,120,0.75)';
+  ctx.beginPath(); ctx.arc(x, y - h * 0.08, Math.max(1.5, h * (0.07 + k * 0.16)), 0, 6.2832); ctx.fill();
+  ctx.fillStyle = '#f8fbff';
+  ctx.beginPath(); ctx.arc(x, y - h * 0.44, h * 0.19, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = 'rgba(60,80,110,0.6)';
+  ctx.fillRect(x - h * 0.1, y - h * 0.47, h * 0.2, Math.max(1, h * 0.035));
+  if (player.gliding) {
+    ctx.strokeStyle = 'rgba(127,231,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y + h * 0.2, h * 0.62, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
+  }
+}
+// 正常模式：不画声纳光环，只在角色脚边留一圈很淡的回响弧，提示当前声压
+function drawEchoArc(W, H) {
+  if (G.screen !== 'game') return;
+  const base = cam.screen(player.pos.x, 0.06, player.pos.z);
+  if (!base) return;
+  const r = Math.max(0, (player.histTier - 1) / 4);
+  ctx.save();
+  ctx.globalAlpha = 0.22 + r * 0.3;
+  ctx.strokeStyle = 'rgba(255,214,150,' + (0.5 + r * 0.5).toFixed(2) + ')';
+  ctx.lineWidth = 1.2;
+  const R = 70 + r * 150;
+  ctx.beginPath(); ctx.ellipse(base.x, base.y, R, R * 0.16, 0, 0, 6.2832); ctx.stroke();
+  ctx.restore();
+}
+
+function drawSonarDisk(W, H, blind) {
+  if (!blind) return;
+  const R = Math.min(IS_MOBILE ? 84 : 120, W * 0.24);
+  const cx0 = R + 20;
+  const cy0 = H - R - 22;
+  const range = Math.max(60, G.sonarRange || CFG.sonarRangeByTier[Math.max(player.histTier, 1)]);
+  const scale = R / range;
+  ctx.save();
+  ctx.globalAlpha = blind ? 0.95 : 0.6;
+  ctx.fillStyle = 'rgba(4,12,20,0.35)';
+  ctx.beginPath(); ctx.arc(cx0, cy0, R, 0, 6.2832); ctx.fill();
+  ctx.strokeStyle = 'rgba(127,231,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx0, cy0, R, 0, 6.2832); ctx.stroke();
+  ctx.strokeStyle = 'rgba(127,231,255,0.18)';
+  ctx.beginPath(); ctx.arc(cx0, cy0, R * 0.66, 0, 6.2832); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx0, cy0, R * 0.33, 0, 6.2832); ctx.stroke();
+  if (G.sonarT > 0) {
+    const sweep = (1 - G.sonarT / CFG.sonarDuration) * 6.2832;
+    const g = ctx.createRadialGradient(cx0, cy0, 0, cx0, cy0, R);
+    g.addColorStop(0, 'rgba(127,231,255,0.30)');
+    g.addColorStop(1, 'rgba(127,231,255,0.02)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(cx0, cy0); ctx.arc(cx0, cy0, R, sweep - 1.1, sweep); ctx.closePath(); ctx.fill();
+  }
+  const now = performance.now() / 1000;
+  for (const en of enemies.list) {
+    const d = Math.hypot(en.x - player.pos.x, en.z - player.pos.z);
+    if (d > range) continue;
+    const ang = Math.atan2(en.z - player.pos.z, en.x - player.pos.x) - player.yaw;
+    const live = en.seen && now - en.seen < CFG.sonarDuration + 0.6;
+    ctx.globalAlpha = live ? (blind ? 1 : 0.75) : (blind ? 0.35 : 0.25);
+    ctx.fillStyle = en.kind === 'boss' ? '#ff6b6b' : '#ffd166';
+    ctx.beginPath(); ctx.arc(cx0 + Math.cos(ang) * d * scale, cy0 + Math.sin(ang) * d * scale, en.kind === 'boss' ? 4 : 2.6, 0, 6.2832); ctx.fill();
+  }
+  if (blind) {
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#7fe7ff';
+    for (const e of world.visible()) {
+      const d = Math.hypot(e.x - player.pos.x, e.z - player.pos.z);
+      if (d > range || e.state.destroyed) continue;
+      const ang = Math.atan2(e.z - player.pos.z, e.x - player.pos.x) - player.yaw;
+      const rr = Math.max(1.2, (Math.max(e.w, e.d) / range) * R * 0.6);
+      ctx.fillRect(cx0 + Math.cos(ang) * d * scale - rr / 2, cy0 + Math.sin(ang) * d * scale - rr / 2, rr, rr);
+    }
+  }
+  ctx.globalAlpha = blind ? 1 : 0.75;
+  ctx.fillStyle = '#7fe7ff';
+  ctx.beginPath(); ctx.moveTo(cx0, cy0 - 7); ctx.lineTo(cx0 - 5, cy0 + 5); ctx.lineTo(cx0 + 5, cy0 + 5); ctx.closePath(); ctx.fill();
+  ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(127,231,255,0.9)';
+  ctx.fillText('声纳 ' + Math.round(range) + 'm', cx0, cy0 + R + 14);
+  ctx.restore();
+}
+
+function drawBlindMask(W, H) {
+  const cx0 = W / 2, cy0 = H * 0.52;
+  const inner = Math.min(W, H) * 0.13;
+  const outer = Math.min(W, H) * 0.52;
+  const g = ctx.createRadialGradient(cx0, cy0, inner, cx0, cy0, outer);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(0.45, 'rgba(2,6,10,0.7)');
+  g.addColorStop(1, 'rgba(0,0,0,0.99)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  if (G.sonarT > 0) {
+    ctx.globalAlpha = (G.sonarT / CFG.sonarDuration) * 0.16;
+    const r = ctx.createRadialGradient(cx0, cy0, inner * 0.7, cx0, cy0, outer);
+    r.addColorStop(0, 'rgba(127,231,255,0)');
+    r.addColorStop(0.55, 'rgba(127,231,255,0.13)');
+    r.addColorStop(1, 'rgba(127,231,255,0)');
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+  ctx.globalAlpha = 0.045;
+  ctx.fillStyle = '#7fe7ff';
+  const off = ((performance.now() / 1000) * 26) % 6;
+  for (let y = off; y < H; y += 6) ctx.fillRect(0, y, W, 1);
+  ctx.globalAlpha = 1;
+}
+
+function drawCG(W, H) {
+  const a = Math.min(1, G.cgT / 1.3);
+  ctx.fillStyle = 'rgba(255,248,235,' + (a * 0.3).toFixed(3) + ')';
+  ctx.fillRect(0, 0, W, H);
+  const cx0 = W / 2, cy0 = H * 0.55;
+  ctx.strokeStyle = 'rgba(255,255,255,' + (a * 0.55).toFixed(3) + ')';
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 28; i++) {
+    const ang = (i / 28) * 6.2832 + (1 - a) * 0.6;
+    const r0 = 30 + ((i * 41) % 120);
+    const r1 = Math.max(W, H) * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx0 + Math.cos(ang) * r0, cy0 + Math.sin(ang) * r0);
+    ctx.lineTo(cx0 + Math.cos(ang + 0.05) * r1, cy0 + Math.sin(ang + 0.05) * r1);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(20,24,32,' + (a * 0.85).toFixed(3) + ')';
+  ctx.font = '700 26px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('世界像玻璃一样碎开', cx0, cy0 - Math.max(W, H) * 0.12);
+}
+
+function drawMinimap() {
+  if (G.mode !== 'blind' || IS_MOBILE) return;
+  const c = hud.mctx;
+  const mw = hud.mini.width / DPR;
+  const mh = hud.mini.height / DPR;
+  const blind = G.mode === 'blind';
+  c.clearRect(0, 0, mw, mh);
+  c.fillStyle = blind ? 'rgba(3,9,14,0.88)' : 'rgba(8,20,32,0.62)';
+  c.fillRect(0, 0, mw, mh);
+  const RANGE = 280;
+  const scale = (mh / 2 - 6) / RANGE;
+  const cx0 = mw / 2, cy0 = mh / 2;
+  c.strokeStyle = 'rgba(127,231,255,0.16)';
+  c.lineWidth = 1;
+  c.beginPath(); c.arc(cx0, cy0, mh / 2 - 6, 0, 6.2832); c.stroke();
+  c.beginPath(); c.arc(cx0, cy0, (mh / 2 - 6) * 0.5, 0, 6.2832); c.stroke();
+  for (const en of enemies.list) {
+    const d = Math.hypot(en.x - player.pos.x, en.z - player.pos.z);
+    if (d > RANGE) continue;
+    const ang = Math.atan2(en.z - player.pos.z, en.x - player.pos.x) - player.yaw;
+    c.fillStyle = en.kind === 'boss' ? '#ff6b6b' : '#ffd166';
+    c.beginPath(); c.arc(cx0 + Math.cos(ang) * d * scale, cy0 + Math.sin(ang) * d * scale, en.kind === 'boss' ? 3 : 1.8, 0, 6.2832); c.fill();
+  }
+  c.fillStyle = '#7fe7ff';
+  c.beginPath(); c.moveTo(cx0, cy0 - 5); c.lineTo(cx0 - 4, cy0 + 4); c.lineTo(cx0 + 4, cy0 + 4); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(127,231,255,0.3)';
+  c.strokeRect(0.5, 0.5, mw - 1, mh - 1);
+}
+
+// 调试钩子：便于自动化测试（无头浏览器）检查内部状态
+window.__music = {
+  ready: () => !!music,
+  steps: () => (music ? music.step : 0),
+  state: () => (actx ? actx.state : 'none'),
+  gain: () => (music ? music.master.gain.value : 0),
+  tier: () => musicTier()
+};
+window.__echo = {
+  G: G, cam: cam, player: player, world: world, enemies: enemies,
+  tierNames: TIER_NAMES,
+  shout: (t) => shout(t),
+  adjMult: (up) => adjMult(up),
+  explain: (v) => explain(v, false),
+  completeGoal: () => completeGoal(),
+  doSonar: () => doSonar(),
+  doJump: () => doJump(),
+  start: (m) => start(m),
+  renderOnce: () => render(0),
+};
+
+boot();
+
+})();
+</script>
+</body>
+</html>
